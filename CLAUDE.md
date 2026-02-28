@@ -6,11 +6,7 @@ Claude가 빠르게 프로젝트 상황을 파악하고 효율적으로 작업�
 ---
 
 ## 📋 프로젝트 요약 정보
-
-- **프로젝트명:** Remote Web Finder
-- **설명:** Local markdown document viewer and editor with live preview
-- **기술 스택:** Node.js, Express, Jest
-- **저장소:** https://github.com/snow512/remote-web-finder
+`docs/project.md` 파일을 반드시 참조한다.
 
 ---
 
@@ -21,8 +17,8 @@ Claude가 빠르게 프로젝트 상황을 파악하고 효율적으로 작업�
 
 ```
 docs/
-├── specs/                   # 설계 문서
-├── tasks/                   # 작업 관리
+├── project.md               # 프로젝트 요약정보 (실행방법, 포트, 기술스택 등)
+├── specs/                   # 설계 문서 (상세 내역)
 │   ├── tasks.md             # 작업 관리 규칙
 │   ├── todos.md             # 기능 개선 TODO 목록
 │   ├── task-{YYYY-MM-DD}-{요약}.md       # 개별 작업
@@ -145,7 +141,8 @@ remote-web-finder/
 ├── server.test.js        → 테스트 파일
 ├── public/               → 정적 파일 (클라이언트)
 ├── docs/                 → 모든 문서 통합 📚
-│   ├── specs/            → 설계 문서
+│   ├── project.md        → 프로젝트 요약정보
+│   ├── specs/            → 설계 문서 (상세)
 │   ├── issues/           → 이슈 추적
 │   ├── tasks/            → 작업 관리
 │   └── decisions.md      → 핵심 기술 결정사항
@@ -157,10 +154,11 @@ remote-web-finder/
 
 ## 🔗 빠른 링크
 
+- **프로젝트 요약:** `/docs/project.md`
+- **설계 문서:** `/docs/specs/`
 - **작업 관리:** `/docs/tasks/`
 - **이슈 추적:** `/docs/issues/`
 - **기술 결정사항:** `/docs/decisions.md`
-- **설계 문서:** `/docs/specs/`
 
 ---
 
