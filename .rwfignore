@@ -1,0 +1,34 @@
+# Remote Web Finder default ignore patterns
+# Syntax: gitignore-style (one pattern per line)
+#   name        — exact match (file or folder)
+#   *.ext       — wildcard match
+#   dir/        — directory only
+#   !pattern    — negate (re-include)
+#   # comment   — ignored
+
+# Version control
+.git
+
+# Dependencies
+node_modules
+bower_components
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build output
+dist
+build
+.cache
+.parcel-cache
+
+# Logs — removed (allow *.log files to be visible)

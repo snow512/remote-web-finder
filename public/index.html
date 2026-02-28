@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Remote Web Finder</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light" disabled>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <h2>Remote Web Finder</h2>
+          <div class="sidebar-actions">
+            <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings (Ctrl+,)">&#9881;</button>
+          </div>
+        </div>
+        <div class="search-wrapper">
+          <input type="text" class="search-input" id="searchInput" placeholder="Filter files... (Ctrl+P)">
+          <button class="filter-preset-btn" id="filterPresetBtn" title="Filter presets">&#9662;</button>
+          <div class="filter-preset-menu" id="filterPresetMenu"></div>
+        </div>
+      </div>
+      <div class="recent-files" id="recentFiles" style="display:none">
+        <div class="recent-header">Recent</div>
+        <div class="recent-list" id="recentList"></div>
+      </div>
+      <div class="tree" id="tree" tabindex="0"></div>
+    </aside>
+
+    <!-- Sidebar resize handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
+    <!-- Main content -->
+    <main class="content" id="content">
+      <div class="toolbar" id="toolbar" style="display:none">
+        <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">&#9776;</button>
+        <nav class="breadcrumb" id="breadcrumb"></nav>
+        <div class="toolbar-actions">
+          <button id="btnWrap" class="btn btn-icon" title="Toggle word wrap">&#8617;</button>
+          <button id="btnFocus" class="btn btn-icon" title="Focus mode (F11)">&#9974;</button>
+          <button id="btnEdit" class="btn btn-edit">Edit</button>
+          <button id="btnSave" class="btn btn-save" style="display:none">Save</button>
+          <button id="btnCancel" class="btn btn-cancel" style="display:none">Cancel</button>
+        </div>
+      </div>
+
+      <!-- In-content search bar -->
+      <div class="search-bar" id="searchBar" style="display:none">
+        <input type="text" id="searchText" placeholder="Search in file..." autocomplete="off">
+        <span class="search-count" id="searchCount"></span>
+        <button class="search-nav" id="searchPrev" title="Previous (Shift+Enter)">&#9650;</button>
+        <button class="search-nav" id="searchNext" title="Next (Enter)">&#9660;</button>
+        <button class="search-close" id="searchClose" title="Close (Esc)">&times;</button>
+      </div>
+
+      <div class="content-body" id="contentBody">
+        <div class="preview" id="preview">
+          <div class="welcome">
+            <h1>Remote Web Finder</h1>
+            <p>Select a file from the sidebar to view its contents.</p>
+          </div>
+        </div>
+        <div class="editor-panel" id="editorPanel" style="display:none">
+          <div class="md-toolbar" id="mdToolbar" style="display:none">
+            <button class="md-btn" data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button class="md-btn" data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+            <button class="md-btn" data-action="heading" title="Heading">H</button>
+            <button class="md-btn" data-action="link" title="Link">&lt;/&gt;</button>
+            <button class="md-btn" data-action="ul" title="Bullet list">&bull;</button>
+            <button class="md-btn" data-action="ol" title="Numbered list">1.</button>
+            <button class="md-btn" data-action="code" title="Code">`</button>
+            <button class="md-btn" data-action="quote" title="Blockquote">&gt;</button>
+            <button class="md-btn" data-action="table" title="Table">&#9638;</button>
+            <button class="md-btn" data-action="hr" title="Horizontal rule">&#8212;</button>
+          </div>
+          <div class="editor-wrap" id="editorWrap">
+            <div class="line-numbers" id="lineNumbers"></div>
+            <textarea class="editor" id="editor"></textarea>
+          </div>
+        </div>
+        <div class="live-preview" id="livePreview" style="display:none"></div>
+        <nav class="toc" id="toc" style="display:none">
+          <div class="toc-header">Contents</div>
+          <div class="toc-list" id="tocList"></div>
+        </nav>
+      </div>
+      <!-- Status bar -->
+      <div class="status-bar" id="statusBar" style="display:none">
+        <span class="status-left" id="statusInfo"></span>
+        <span class="status-right" id="statusCursor"></span>
+      </div>
+    </main>
+  </div>
+
+  <!-- Context menu -->
+  <div class="context-menu" id="contextMenu" style="display:none">
+    <div class="context-item" id="ctxRename">Rename</div>
+    <div class="context-item danger" id="ctxDelete">Delete file</div>
+  </div>
+
+  <!-- Keyboard shortcuts help -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay" style="display:none">
+    <div class="shortcuts-dialog">
+      <div class="shortcuts-header">
+        <h3>Keyboard Shortcuts</h3>
+        <button class="search-close" id="shortcutsClose">&times;</button>
+      </div>
+      <div class="shortcuts-body">
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Navigation</div>
+          <div class="shortcut-row"><kbd>Ctrl+P</kbd><span>Filter files</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+F</kbd><span>Search in file</span></div>
+          <div class="shortcut-row"><kbd>&#8593; &#8595;</kbd><span>Navigate tree</span></div>
+          <div class="shortcut-row"><kbd>&#8592; &#8594;</kbd><span>Collapse / Expand folder</span></div>
+          <div class="shortcut-row"><kbd>Enter</kbd><span>Open file / Toggle folder</span></div>
+        </div>
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Editing</div>
+          <div class="shortcut-row"><kbd>Ctrl+S</kbd><span>Save file</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+B</kbd><span>Bold</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+I</kbd><span>Italic</span></div>
+          <div class="shortcut-row"><kbd>Tab</kbd><span>Insert indent</span></div>
+          <div class="shortcut-row"><kbd>Esc</kbd><span>Cancel editing</span></div>
+        </div>
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">View</div>
+          <div class="shortcut-row"><kbd>F11</kbd><span>Toggle Focus mode</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+/&#8722;/0</kbd><span>Zoom in / out / reset</span></div>
+          <div class="shortcut-row"><kbd>Ctrl+,</kbd><span>Settings</span></div>
+          <div class="shortcut-row"><kbd>?</kbd><span>This help</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings dialog -->
+  <div class="settings-overlay" id="settingsOverlay" style="display:none">
+    <div class="settings-dialog">
+      <div class="settings-header">
+        <h3>Settings</h3>
+        <button class="search-close" id="settingsClose">&times;</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row">
+          <span class="settings-row-label">Font Size</span>
+          <div class="settings-row-controls">
+            <button class="settings-btn" id="settingsFontDec">&minus;</button>
+            <span class="settings-value" id="settingsFontSizeValue">14px</span>
+            <button class="settings-btn" id="settingsFontInc">+</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Theme</span>
+          <div class="settings-row-controls">
+            <span class="settings-value" id="settingsThemeValue">Dark</span>
+            <button class="settings-btn" id="settingsThemeToggle">Toggle</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Word Wrap</span>
+          <div class="settings-row-controls">
+            <span class="settings-value" id="settingsWrapValue">ON</span>
+            <button class="settings-btn" id="settingsWrapToggle">Toggle</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "remote-web-finder",
+  "version": "1.0.0",
+  "description": "Local markdown document viewer and editor with live preview",
+  "main": "server.js",
+  "bin": {
+    "remote-web-finder": "./server.js"
+  },
+  "files": [
+    "server.js",
+    "public/",
+    ".rwfignore"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest --verbose"
+  },
+  "keywords": [
+    "markdown",
+    "viewer",
+    "editor",
+    "documentation",
+    "live-preview",
+    "local",
+    "cli"
+  ],
+  "author": "snow512",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snow512/remote-web-finder"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
