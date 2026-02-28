@@ -1,5 +1,4 @@
 # Task: MD Watcher — npm 패키지 분리
-
 - **생성일:** 2026-02-25
 - **우선순위:** 🟡 중간
 - **브랜치:** `feature/docs-viewer`
