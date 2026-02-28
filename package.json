@@ -4,6 +4,7 @@
   "description": "Local markdown document viewer and editor with live preview",
   "main": "server.js",
   "bin": {
+    "rwf": "./server.js",
     "remote-web-finder": "./server.js"
   },
   "files": [
