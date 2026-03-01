@@ -1,54 +1,54 @@
-# Specs 관리 규칙
+# Specs Management Rules
 
-이 폴더는 **Remote Web Finder** 프로젝트의 설계 문서를 관리합니다.
+This folder manages design documents for the **Remote Web Finder** project.
 
 ---
 
-## 폴더 구조
+## Folder Structure
 
 ```
 docs/specs/
-├── specs.md              ← 이 파일 (규칙)
-├── 1-overview.md         ← 프로젝트 개요
-├── {번호}-{주제}.md       ← 개별 설계 문서
+├── specs.md              ← This file (rules)
+├── 1-overview.md         ← Project overview
+├── {number}-{topic}.md   ← Individual design documents
 └── ...
 ```
 
 ---
 
-## 관리 규칙
+## Management Rules
 
-1. **파일명 형식:** `{번호}-{주제}.md` (예: `1-overview.md`, `2-api-design.md`)
-2. **번호 체계:** 순차적으로 부여, 삭제 시 번호 재사용하지 않음
-3. **내용 범위:** 프로젝트 요구사항, 아키텍처, API 설계, 데이터 모델 등 고정 설계 문서
-4. **수정 원칙:** 설계 변경 시에만 수정하며, 변경 이력을 문서 하단에 기록
-5. **신규 작성:** 새로운 설계 영역이 추가될 때 다음 번호로 파일 생성
-6. **일관성:** 기존 설계 문서와의 일관성을 유지하며, 충돌 시 `/docs/decisions.md`에 결정사항 기록
+1. **Filename format:** `{number}-{topic}.md` (e.g., `1-overview.md`, `2-api-design.md`)
+2. **Numbering:** Assign sequentially; do not reuse numbers after deletion
+3. **Scope:** Requirements, architecture, API design, data models, and other fixed design documents
+4. **Modification policy:** Only modify when the design changes; record change history at the bottom of the document
+5. **New documents:** Create with the next available number when a new design area is added
+6. **Consistency:** Maintain consistency with existing design documents; record conflicts in `/docs/decisions.md`
 
 ---
 
-## 권장 문서 구성
+## Recommended Document Structure
 
-각 설계 문서는 아래 구조를 권장합니다:
+Each design document should follow this structure:
 
 ```markdown
-# {주제}
+# {Topic}
 
-## 개요
-(이 문서의 목적과 범위)
+## Overview
+(Purpose and scope of this document)
 
-## 상세 내용
-(설계 상세)
+## Details
+(Design details)
 
-## 변경 이력
-| 날짜 | 변경 내용 |
-|------|----------|
+## Change History
+| Date | Changes |
+|------|---------|
 ```
 
 ---
 
-## 연관 문서
+## Related Documents
 
-- 기술 결정사항: [`/docs/decisions.md`](../decisions.md)
-- 작업 관리: [`/docs/tasks/tasks.md`](../tasks/tasks.md)
-- 이슈 관리: [`/docs/issues/issues.md`](../issues/issues.md)
+- Architecture decisions: [`/docs/decisions.md`](../decisions.md)
+- Task management: [`/docs/tasks/tasks.md`](../tasks/tasks.md)
+- Issue management: [`/docs/issues/issues.md`](../issues/issues.md)

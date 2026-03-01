@@ -1,47 +1,47 @@
-# Issue 관리 규칙
+# Issue Management Rules
 
-이 폴더는 **Remote Web Finder** 프로젝트의 이슈(버그, 장애)를 관리합니다.
+This folder manages issues (bugs, incidents) for the **Remote Web Finder** project.
 
 ---
 
-## 📁 폴더 구조
+## Folder Structure
 
 ```
 docs/issues/
-├── issues.md                     ← 이 파일 (규칙 + 인덱스)
-├── issue-{날짜}-{요약}.md        ← 미해결 이슈
-└── .resolved/                    ← 해결된 이슈 아카이브
-    └── 2026-01/                  ← 년월별 분리 폴더
-        └── issue-{날짜}-{요약}.md
+├── issues.md                     ← This file (rules + index)
+├── issue-{date}-{summary}.md    ← Open issues
+└── .resolved/                    ← Resolved issue archive
+    └── 2026-01/                  ← Monthly subfolders
+        └── issue-{date}-{summary}.md
 ```
 
 ---
 
-## 📝 관리 규칙
+## Management Rules
 
-1. **새 이슈 등록:** `issue-{YYYY-MM-DD}-{요약}.md` 파일 생성
-2. **이슈 해결 시:** `.resolved/` 폴더로 이동
-3. **파일명 형식:** `issue-{YYYY-MM-DD}-{요약}.md` (예: `issue-2026-02-28-server-crash.md`)
-4. **파일 내용:** 날짜, 상태, 증상, 원인, 해결 방법 포함
+1. **New issue:** Create `issue-{YYYY-MM-DD}-{summary}.md` file
+2. **When resolved:** Move to `.resolved/` folder
+3. **Filename format:** `issue-{YYYY-MM-DD}-{summary}.md` (e.g., `issue-2026-02-28-server-crash.md`)
+4. **File content:** Include date, status, symptoms, cause, and resolution
 
-> Task 관리 규칙은 [`/docs/tasks/tasks.md`](../tasks/tasks.md) 참고
-
----
-
-## 📋 미해결 이슈
-
-| 날짜 | 이슈 | 파일 |
-|------|------|------|
-| (없음) | | |
+> See [`/docs/tasks/tasks.md`](../tasks/tasks.md) for task management rules
 
 ---
 
-## ✅ 해결된 이슈
+## Open Issues
 
-| 날짜 | 이슈 | 파일 |
-|------|------|------|
-| (없음) | | |
+| Date | Issue | File |
+|------|-------|------|
+| (none) | | |
 
 ---
 
-**마지막 업데이트:** 2026-02-28
+## Resolved Issues
+
+| Date | Issue | File |
+|------|-------|------|
+| (none) | | |
+
+---
+
+**Last updated:** 2026-02-28

@@ -1,178 +1,189 @@
-# Claude 작업 관리 문서
+# Claude Task Management
 
-이 파일은 프로젝트의 작업 효율화를 위한 중앙 관리 문서입니다.
-Claude가 빠르게 프로젝트 상황을 파악하고 효율적으로 작업할 수 있도록 핵심 정보를 정리합니다.
-
----
-
-## 📋 프로젝트 요약 정보
-`docs/project.md` 파일을 반드시 참조한다.
+This file is the central management document for project workflow efficiency.
+It organizes key information so Claude can quickly understand the project context and work efficiently.
 
 ---
 
-## 📁 문서 폴더 구조 및 관리 규칙
+## Language Preferences
 
-모든 문서는 `/docs` 폴더 아래에서 통합 관리됩니다.
-각 폴더에 폴더명과 동일한 파일로 폴더의 규칙을 관리합니다.
+| Context | Language | Notes |
+|---------|----------|-------|
+| Source code (comments, variables) | English | All code comments and identifiers in English |
+| Documentation (docs/, README, etc.) | English | All project documents in English |
+| Commit messages | Korean | Git commit messages in Korean |
+| Claude conversation | Korean | Respond to user in Korean |
+
+---
+
+## Project Summary
+Refer to `docs/project.md`.
+
+---
+
+## Documentation Structure & Management Rules
+
+All documents are managed under the `/docs` folder.
+Each folder has a file with the same name as the folder to manage its rules.
 
 ```
 docs/
-├── project.md               # 프로젝트 요약정보 (실행방법, 포트, 기술스택 등)
-├── specs/                   # 설계 문서 (상세 내역)
-│   ├── tasks.md             # 작업 관리 규칙
-│   ├── todos.md             # 기능 개선 TODO 목록
-│   ├── task-{YYYY-MM-DD}-{요약}.md       # 개별 작업
-│   └── .completed/          # 완료된 작업 아카이브
-├── issues/                  # 이슈 추적
-│   ├── issues.md            # 이슈관리 규칙
-│   ├── issue-{YYYY-MM-DD}-{요약}.md
-│   └── .resolved/           # 해결된 이슈 아카이브
-└── decisions.md             # 핵심 기술 결정사항
+├── project.md               # Project summary (run methods, ports, tech stack, etc.)
+├── specs/                   # Design documents (detailed)
+│   ├── tasks.md             # Task management rules
+│   ├── todos.md             # Feature improvement TODO list
+│   ├── task-{YYYY-MM-DD}-{summary}.md  # Individual tasks
+│   └── .completed/          # Completed task archive
+├── issues/                  # Issue tracking
+│   ├── issues.md            # Issue management rules
+│   ├── issue-{YYYY-MM-DD}-{summary}.md
+│   └── .resolved/           # Resolved issue archive
+└── decisions.md             # Architecture decisions
 ```
 
-### `/docs/specs` - 설계 문서
-**용도:** 프로젝트의 요구사항, 아키텍처, 설계 등 고정 개발 문서
+### `/docs/specs` - Design Documents
+**Purpose:** Fixed development documents including requirements, architecture, and design
 
-**관리 규칙:**
-- 파일명: `{번호}-{주제}.md` (예: `1-overview.md`)
-- 내용: 프로젝트 설계, 요구사항, API 설계 등 참고 자료
-- 수정: 설계 변경 시만 수정 (변경 이력 기록)
+**Management Rules:**
+- Filename: `{number}-{topic}.md` (e.g., `1-overview.md`)
+- Content: Project design, requirements, API design, and other reference materials
+- Modification: Only when design changes (record change history)
 
-### `/docs/issues` - 이슈 현황
-**용도:** 발견된 버그, 개선사항, 문제 사항 기록
+### `/docs/issues` - Issue Tracking
+**Purpose:** Record discovered bugs, improvements, and problems
 
-**관리 규칙:**
-- 파일명: `issue-{YYYY-MM-DD}-{요약}.md`
-- **해결된 이슈:** `/docs/issues/.resolved/` 폴더로 이동
-- **미해결 이슈:** `/docs/issues/` 루트에 유지
+**Management Rules:**
+- Filename: `issue-{YYYY-MM-DD}-{summary}.md`
+- **Resolved issues:** Move to `/docs/issues/.resolved/` folder
+- **Open issues:** Keep in `/docs/issues/` root
 
-### `/docs/decisions.md` - 결정사항
-**용도:** 프로젝트의 핵심 기술 선택 및 아키텍처 결정사항 기록
+### `/docs/decisions.md` - Decisions
+**Purpose:** Record key technology choices and architecture decisions
 
-**관리 규칙:**
-- 꼭 기억해야 할 확정된 결정사항만 보관
-- 불필요한 이력이나 진행 상태 구분 없이 단일 파일로 관리
-- 새로운 결정사항은 해당 섹션에 추가
+**Management Rules:**
+- Keep only confirmed, must-remember decisions
+- Manage as a single file without unnecessary history or status divisions
+- Add new decisions to the appropriate section
 
-### `/docs/tasks/` - 작업 관리
-**용도:** 앞으로 진행할 작업 목록 관리
+### `/docs/tasks/` - Task Management
+**Purpose:** Manage upcoming work items
 
-**관리 규칙:**
-- `task-{YYYY-MM-DD}-{요약}.md` 파일로 개별 관리
-- 완료 시: `.completed/` 폴더로 이동
-- 우선순위: `🔴 높음` `🟡 중간` `🟢 낮음`
-
----
-
-## 🔒 규칙들
-
-### 🔒 커스텀 슬래시 커맨드 / 스킬
-- **`/commit-push`** — 현재 변경사항 커밋·푸시. 관련 타스크 자동 업데이트 포함.
-- **`/merge-develop`** — 현재 브랜치를 develop에 머지하고 브랜치 삭제.
-
-### 🔒 관리 지침들 (아브라카다브라)
-사용자가 직접 명령할때 수행할 지침들.
-- **"지침에 기록해"** = 이 파일(`CLAUDE.md`)의 관리 지침들 섹션에 기록해.
-- **"진행사항 파악해"** = 커밋 기록 등을 읽고 `docs/tasks`에서 관련 타스크를 찾아서 읽고 현재 진행 상태를 파악한다.
-- **"타스크 기록해"** = 현재 작업중인 내용에 대한 `docs/tasks/`폴더의 관련 타스크를 업데이트 하거나 관련 타스크가 없으면 새로 생성해.
-- **"타스크 완료해"** = 현재 작업중인 내용에 대한 `docs/tasks/`폴더의 관련 타스크를 업데이트 하고 완료처리해.
-- **"보강해"** = 기존의 구현 내용을 보강하거나 문제점을 찾아서 수정해. 그리고 동작이 잘되었는지 테스트까지 완료해.
-- **"개선해"** = 기존의 구현 내용을 조금 확장하여 편리성을 증대시키거나 사용성 레벨에서의 문제점까지 개선하라는 뜻. 반드시 개선할 내용을 먼저 사용자에게 보고하고 지정된 개선 작업만 수행한다.
-- **"커밋해"** = 현재 작업된 내용에 대해서 커밋만 하고 푸쉬하지 않음.
-- **"커밋 푸쉬해"** 또는 **"커푸"** = `/commit-push` 스킬을 실행해.
-- **"커밋 푸쉬만해"** = 현재 작업된 내용에 대해서 커밋하고 푸쉬만해. (타스크 업데이트 없이)
-- **"프로젝트 초기화해"** = `project-init.md` 파일을 참조하여 프로젝트 초기화 구성을 수행한다. (docs 구조 생성, CLAUDE.md 생성, .claude 설정, .gitignore 업데이트 등)
-
-### 🔒 관리 규칙
-일반적으로 따라야 하는 규칙들.
-- **작업 전후 문서 업데이트:** 사용자가 작업을 지시하면 ① 작업 착수 전에 관련 타스크(`docs/tasks/`)를 업데이트하고, ② 작업 완료 후에도 관련 타스크에 진행된 내용을 반영한다.
-- **임시 파일 관리:** 디버깅용 스크린샷, 로그, 임시 파일 등은 반드시 `.temp/` 폴더에 저장할 것. 프로젝트 루트나 소스 디렉토리에 직접 생성 금지. (`.temp/`는 `.gitignore`에 포함됨)
-- **작업 계획 수립 시** 반드시 플랜모드에서 수행한 결과인 계획을 바탕으로 `/docs/tasks/task-{YYYY-MM-DD}-{요약}.md` 파일을 생성하거나 기존 task를 업데이트하여 계획을 기록할 것. 계획 없이 바로 구현하지 말고, task 문서를 먼저 작성한 뒤 진행한다.
-- **유저로부터 완료 판정을 받기 전까지 task를 `.completed/`로 이동하지 않는다.** 작업이 끝났더라도 유저가 명시적으로 완료를 확인해야만 아카이브 처리할 것.
+**Management Rules:**
+- Manage individually as `task-{YYYY-MM-DD}-{summary}.md` files
+- On completion: Move to `.completed/` folder
+- Priority: `🔴 High` `🟡 Medium` `🟢 Low`
 
 ---
 
-## 🚀 작업 단계 규칙
+## Rules
 
-### 1. 프로젝트 파악 단계
-- 이 파일(`CLAUDE.md`)을 우선 읽음
-- `/docs/tasks/`에서 현재 진행 중인 작업 확인
-- 필요시 `/docs/specs/` 폴더의 관련 설계 문서 참고
+### Custom Slash Commands / Skills
+- **`/commit-push`** — Commit and push current changes. Includes automatic task updates.
+- **`/merge-develop`** — Merge current branch into develop and delete the branch.
 
-### 2. 설계 단계
-- 설계를 먼저 하고 수행한다.
-- 기존 설계(`/docs/specs/`)와의 일관성 유지
-- 새로운 결정사항 발생 시 `/docs/decisions.md`에 해당 섹션에 추가
+### Management Directives (Abracadabra)
+Directives to execute when the user gives direct commands.
+- **"지침에 기록해"** = Record in the management directives section of this file (`CLAUDE.md`).
+- **"진행사항 파악해"** = Read commit history, find related tasks in `docs/tasks`, and assess current progress.
+- **"타스크 기록해"** = Update the related task in `docs/tasks/` for current work, or create a new one if none exists.
+- **"타스크 완료해"** = Update the related task in `docs/tasks/` for current work and mark it complete.
+- **"보강해"** = Reinforce or fix issues in existing implementation. Complete testing to verify proper operation.
+- **"개선해"** = Extend existing implementation for better usability or fix UX-level issues. Must report improvement plans to user first and only perform approved improvements.
+- **"커밋해"** = Commit current work only, do not push.
+- **"커밋 푸쉬해"** or **"커푸"** = Run `/commit-push` skill.
+- **"커밋 푸쉬만해"** = Commit and push current work only. (No task updates)
+- **"프로젝트 초기화해"** = Follow `project-init.md` to set up project initialization. (Create docs structure, CLAUDE.md, .claude settings, update .gitignore, etc.)
 
-### 3. TASK 작성 단계
-- 반드시 `docs/tasks/`폴더에 task를 먼저 생성하거나 관련 타스크가 있는 경우는 업데이트하고 작업한다.
-- TASK 작성시에는 Phase별로 구분하여 작성하고 Phase별로 단계적으로 수행한다.
-- 하나의 phase에는 3가지 이하 또는 1시간 미만의 작업 분량으로 계획한다. 확신이 없을때는 사용자에게 물어본다.
-
-### 4. 작업 수행 단계
-- 문제 발생 시 `/docs/issues/`에 기록
-- 가능하면 사용자 개입을 최소화한다. 사용자 개입이 필요한 것은 설계단계에서 미리 물어봐야 한다.
-
-### 5. 문서 관리
-가능하면 문서를 먼저 업데이트하고 수행한다. 작업이 종료되면 문서도 업데이트한다.
-- **새 작업 추가:** `/docs/tasks/task-{YYYY-MM-DD}-{요약}.md` 파일 생성
-- **작업 완료:** `/docs/tasks/.completed/`로 이동, 완료이동은 사용자 확인후 진행한다.
-- **설계 변경:** `/docs/specs/` 해당 파일 수정
-- **기술 결정:** `/docs/decisions.md` 해당 섹션에 추가
-- **버그/이슈:** `/docs/issues/`에 `issue-{날짜}-{요약}.md`로 생성
+### Management Rules
+General rules to follow.
+- **Update docs before and after work:** When the user assigns work, ① update related tasks (`docs/tasks/`) before starting, and ② reflect progress in related tasks after completion.
+- **Temp file management:** Debug screenshots, logs, and temp files must be saved in `.temp/` folder. Never create them directly in the project root or source directories. (`.temp/` is included in `.gitignore`)
+- **When planning work:** Always create `/docs/tasks/task-{YYYY-MM-DD}-{summary}.md` or update existing tasks based on plans from plan mode. Do not implement without writing a task document first.
+- **Do not move tasks to `.completed/` until the user confirms completion.** Even if work is done, only archive after explicit user confirmation.
 
 ---
 
-## 💡 빠른 참고들
+## Workflow Steps
 
-### 실행 명령어
+### 1. Project Assessment
+- Read this file (`CLAUDE.md`) first
+- Check current active tasks in `/docs/tasks/`
+- Reference related design documents in `/docs/specs/` as needed
+
+### 2. Design Phase
+- Design first, then implement.
+- Maintain consistency with existing designs (`/docs/specs/`)
+- Add new decisions to the appropriate section in `/docs/decisions.md`
+
+### 3. Task Writing Phase
+- Always create or update a task in `docs/tasks/` before starting work.
+- Structure tasks by Phase and execute step by step.
+- Each phase should have 3 or fewer items or less than 1 hour of work. Ask the user if uncertain.
+
+### 4. Execution Phase
+- Record problems in `/docs/issues/`
+- Minimize user intervention. Questions requiring user input should be asked during the design phase.
+
+### 5. Documentation
+Update documentation before work when possible. Also update after work is complete.
+- **New task:** Create `/docs/tasks/task-{YYYY-MM-DD}-{summary}.md`
+- **Task complete:** Move to `/docs/tasks/.completed/`, only after user confirmation.
+- **Design change:** Modify the relevant file in `/docs/specs/`
+- **Technical decision:** Add to the appropriate section in `/docs/decisions.md`
+- **Bug/Issue:** Create `issue-{date}-{summary}.md` in `/docs/issues/`
+
+---
+
+## Quick Reference
+
+### Run Commands
 ```bash
-# 서버 실행
+# Start server
 npm start
 
-# 테스트 실행
+# Run tests
 npm test
 ```
 
-### 디렉토리 네비게이션
+### Directory Navigation
 ```
 remote-web-finder/
-├── server.js             → Express 서버 메인 파일
-├── server.test.js        → 테스트 파일
-├── public/               → 정적 파일 (클라이언트)
-├── docs/                 → 모든 문서 통합 📚
-│   ├── project.md        → 프로젝트 요약정보
-│   ├── specs/            → 설계 문서 (상세)
-│   ├── issues/           → 이슈 추적
-│   ├── tasks/            → 작업 관리
-│   └── decisions.md      → 핵심 기술 결정사항
-├── CLAUDE.md             → 이 파일 (진입점) 📌
-└── project-init.md       → 프로젝트 초기화 지침
+├── server.js             → Express server main file
+├── server.test.js        → Test file
+├── public/               → Static files (client)
+├── docs/                 → All documentation
+│   ├── project.md        → Project summary
+│   ├── specs/            → Design documents (detailed)
+│   ├── issues/           → Issue tracking
+│   ├── tasks/            → Task management
+│   └── decisions.md      → Architecture decisions
+├── CLAUDE.md             → This file (entrypoint)
+└── project-init.md       → Project initialization guide
 ```
 
 ---
 
-## 🔗 빠른 링크
+## Quick Links
 
-- **프로젝트 요약:** `/docs/project.md`
-- **설계 문서:** `/docs/specs/`
-- **작업 관리:** `/docs/tasks/`
-- **이슈 추적:** `/docs/issues/`
-- **기술 결정사항:** `/docs/decisions.md`
-
----
-
-## 📝 이력 참조
-
-이력은 아래 문서에서 확인할 수 있습니다. 이 파일에 직접 기록하지 않습니다.
-
-- **작업 이력:** `git log --oneline` 또는 `/docs/tasks/`
-- **기술 결정:** `/docs/decisions.md`
+- **Project summary:** `/docs/project.md`
+- **Design documents:** `/docs/specs/`
+- **Task management:** `/docs/tasks/`
+- **Issue tracking:** `/docs/issues/`
+- **Architecture decisions:** `/docs/decisions.md`
 
 ---
 
-## 📌 진입점
+## History Reference
 
-이 파일(**CLAUDE.md**)이 프로젝트의 **유일한 진입점**입니다.
-- 모든 프로젝트 정보는 이곳 또는 `/docs/` 폴더에서 관리됩니다.
-- 각 파일들을 정기적으로 업데이트하여 최신 프로젝트 상황을 반영합니다
+History can be found in the documents below. Do not record directly in this file.
+
+- **Work history:** `git log --oneline` or `/docs/tasks/`
+- **Technical decisions:** `/docs/decisions.md`
+
+---
+
+## Entrypoint
+
+This file (**CLAUDE.md**) is the project's **sole entrypoint**.
+- All project information is managed here or in the `/docs/` folder.
+- Each file is regularly updated to reflect the latest project status.

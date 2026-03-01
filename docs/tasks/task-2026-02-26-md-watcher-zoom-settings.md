@@ -1,39 +1,39 @@
-# MD Watcher: 줌 개선 + 설정 페이지 추가
+# MD Watcher: Zoom Improvement + Settings Page
 
-**생성일:** 2026-02-26
-**우선순위:** 🟡 중간
-**브랜치:** `feature/docs-viewer`
-**상태:** 완료
-
----
-
-## 목표
-- 줌(Ctrl++/-)이 텍스트/이미지 컨텍스트별로 분리되어 동작
-- 폰트 크기, 테마, 줄바꿈 등을 조정할 설정 다이얼로그 추가
-
-## Phase 1: 줌 시스템 리팩터 (텍스트/이미지 분리)
-
-- [x] `IMAGE_ZOOM_KEY` 상수 + `imageZoomLevel` 상태변수 추가
-- [x] `applyImageZoom()` → CSS 변수 `--image-zoom` 설정
-- [x] `zoomIn()`/`zoomOut()`/`zoomReset()` 내부에서 `isImageFile(currentPath)` 체크
-- [x] CSS `.image-preview img`에 `transform: scale(var(--image-zoom, 1))` + `overflow: auto`
-
-## Phase 2: 설정 다이얼로그 UI (HTML + CSS)
-
-- [x] `#settingsOverlay` HTML (폰트 크기, 테마, 줄바꿈, 줌 리셋)
-- [x] 설정 CSS (overlay, dialog, row 스타일)
-- [x] toolbar에 기어 아이콘 `#btnSettings` 추가
-- [x] 단축키 도움말에 `Ctrl+,` 추가
-
-## Phase 3: 설정 다이얼로그 로직 (app.js)
-
-- [x] `FONT_SIZE_KEY`, `baseFontSize` 상태 + `applyFontSize()`
-- [x] CSS 변수 `--base-font-size` 통합 (preview, editor, line-numbers, live-preview)
-- [x] 설정 이벤트: 열기/닫기, 폰트 크기 +/-, 테마/줄바꿈 토글, 줌 리셋
+**Created:** 2026-02-26
+**Priority:** 🟡 Medium
+**Branch:** `feature/docs-viewer`
+**Status:** Completed
 
 ---
 
-## 수정 파일
+## Goal
+- Zoom (Ctrl++/-) operates separately for text and image contexts
+- Add a settings dialog for font size, theme, word wrap, etc.
+
+## Phase 1: Zoom System Refactor (Text/Image Separation)
+
+- [x] Add `IMAGE_ZOOM_KEY` constant + `imageZoomLevel` state variable
+- [x] `applyImageZoom()` → set CSS variable `--image-zoom`
+- [x] Check `isImageFile(currentPath)` inside `zoomIn()`/`zoomOut()`/`zoomReset()`
+- [x] CSS `.image-preview img` with `transform: scale(var(--image-zoom, 1))` + `overflow: auto`
+
+## Phase 2: Settings Dialog UI (HTML + CSS)
+
+- [x] `#settingsOverlay` HTML (font size, theme, word wrap, zoom reset)
+- [x] Settings CSS (overlay, dialog, row styles)
+- [x] Add gear icon `#btnSettings` to toolbar
+- [x] Add `Ctrl+,` to keyboard shortcut help
+
+## Phase 3: Settings Dialog Logic (app.js)
+
+- [x] `FONT_SIZE_KEY`, `baseFontSize` state + `applyFontSize()`
+- [x] Integrate CSS variable `--base-font-size` (preview, editor, line-numbers, live-preview)
+- [x] Settings events: open/close, font size +/-, theme/word-wrap toggle, zoom reset
+
+---
+
+## Modified Files
 - `public/app.js`
 - `public/style.css`
 - `public/index.html`

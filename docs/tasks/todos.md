@@ -1,30 +1,30 @@
-# 기능 개선 TODO
+# Feature Improvement TODO
 
-현재 구현된 기능 기반으로, 개선 항목을 우선순위별로 정리합니다.
-작업 착수 시 `task-{YYYY-MM-DD}-{요약}.md` 파일을 생성하세요.
+Lists improvement items by priority based on currently implemented features.
+Create a `task-{YYYY-MM-DD}-{summary}.md` file when starting work on an item.
 
-### 범례
-- **구분:** `feature` = 복합 큰 기능 (다수 파일, 설계 필요) / `task` = 단일 단순 기능
-- **난이도:** ⬜ 쉬움 (수시간) / 🟧 보통 (1~2일) / 🟥 어려움 (3일+)
-- **우선순위:** 1(최우선) ~ 5(나중에)
+### Legend
+- **Type:** `feature` = complex large feature (multiple files, design required) / `task` = simple single feature
+- **Difficulty:** ⬜ Easy (hours) / 🟧 Medium (1-2 days) / 🟥 Hard (3+ days)
+- **Priority:** 1 (highest) ~ 5 (later)
 
 ---
 
-| # | 우선순위 | 구분 | 난이도 | 항목 | 비고 |
-|---|---------|------|--------|------|------|
+| # | Priority | Type | Difficulty | Item | Notes |
+|---|----------|------|------------|------|-------|
 | | | | | | |
 
 ---
 
-## 완료 이력
+## Completion History
 
 <details>
-<summary>완료된 항목 (클릭하여 펼치기)</summary>
+<summary>Completed items (click to expand)</summary>
 
-(없음)
+(none)
 
 </details>
 
 ---
 
-**마지막 업데이트:** 2026-02-28
+**Last updated:** 2026-02-28
