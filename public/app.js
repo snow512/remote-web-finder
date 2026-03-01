@@ -397,6 +397,10 @@ searchInput.addEventListener('input', () => {
   applyFilter();
 });
 
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { searchInput.value = ''; applyFilter(); searchInput.blur(); }
+});
+
 // --- Filter presets ---
 const DEFAULT_PRESETS = [
   { label: 'Markdown', exts: '.md' },
@@ -812,11 +816,9 @@ let ctxTargetType = 'file'; // 'file' or 'dir'
 
 function showContextMenu(e, targetPath, type = 'file') {
   e.preventDefault();
+  if (type !== 'file') return; // no context menu for directories
   ctxTargetPath = targetPath;
   ctxTargetType = type;
-  // Show/hide items based on type
-  ctxRename.style.display = type === 'file' ? 'block' : 'none';
-  ctxDelete.style.display = type === 'file' ? 'block' : 'none';
   contextMenu.style.display = 'block';
   contextMenu.style.left = `${e.clientX}px`;
   contextMenu.style.top = `${e.clientY}px`;
@@ -935,6 +937,11 @@ function showImagePreview(filePath) {
     img.onerror = () => {
       removeRecent(filePath);
       if (currentPath !== filePath) return; // user navigated away
+      const u = new URL(window.location);
+      if (u.searchParams.get('file') === filePath) {
+        u.searchParams.delete('file');
+        history.replaceState(null, '', u);
+      }
       showToast('Image not found (removed from recent)', 'error');
       previewEl.innerHTML = `<div class="welcome"><h1>Image not found</h1><p>${esc(filePath)}</p></div>`;
     };
@@ -976,6 +983,7 @@ function addCopyButtons(container) {
     btn.className = 'code-copy-btn';
     btn.textContent = 'Copy';
     btn.addEventListener('click', async () => {
+      if (btn.classList.contains('copied')) return;
       const code = pre.querySelector('code');
       const text = code ? code.textContent : pre.textContent;
       try {
@@ -1132,6 +1140,7 @@ editorEl.addEventListener('scroll', syncLineNumbersScroll);
 function enterEditMode() {
   isEditing = true;
   hideSaveErrorBanner();
+  closeContentSearch();
   previewEl.style.display = 'none';
   editorPanel.style.display = 'flex';
   editorEl.value = originalContent;

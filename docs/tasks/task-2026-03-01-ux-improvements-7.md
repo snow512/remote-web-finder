@@ -48,7 +48,7 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 - Fallback to `.value =` when `execCommand` fails
 - Applied to: `mdWrap`, `mdLinePrefix`, Tab handler, table/hr insertion
 
-## Reinforcement (9 rounds, 29 fixes)
+## Reinforcement (10 rounds, 31 fixes)
 
 | Round | Fixes | Key Items |
 |-------|-------|-----------|
@@ -60,13 +60,15 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 | 7th | 3 | Banner slide animation, filter warning color, error tooltip |
 | 8th | 2 | loadTree reapply filter, boot expandPathTo cleanup |
 | 9th | 6 | Banner animation race conditions (bannerHideHandler), var(--hover)→var(--bg-hover), URL ?file= 404 cleanup |
+| 10th | 2 | Image 404 URL cleanup, enterEditMode closes search bar (orphaned searchMatches fix) |
 
-## Improvement (2 rounds, 6 enhancements)
+## Improvement (3 rounds, 9 enhancements)
 
 | Round | Enhancements | Key Items |
 |-------|-------------|-----------|
 | 1st | 3 | Search input red border on no results, filter input red border on no matches, banner slide-up exit animation |
 | 2nd | 3 | Focus mode toolbar hover protection, Ctrl+F search query persistence, search count "No results" red color |
+| 3rd | 3 | Filter Escape key clear, directory context menu prevention, copy button duplicate click guard |
 
 ## Files Modified
 - `public/app.js` — All items
