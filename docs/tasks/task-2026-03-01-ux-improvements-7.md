@@ -5,43 +5,59 @@
 **Status:** ✅ Complete
 
 ## Summary
-Implement 7 UX and feature improvements identified during bug hunting round 3 analysis.
+Implement 7 UX and feature improvements identified during bug hunting round 3 analysis, followed by 6 rounds of reinforcement and polish.
 
-## Changes
+## Core Implementation (7 features)
 
 ### #10. Search Highlight Performance
 - Added `lastSearchQuery` cache to prevent duplicate searches
 - Increased debounce from 200ms to 300ms
-- Reset cache in `closeContentSearch()`
+- Reset cache in `closeContentSearch()` and `showPreview()`
 
 ### #4. Markdown Image Lazy-Load
 - Added `marked.use()` with custom image renderer
-- All `<img>` tags now include `loading="lazy"` attribute
+- All `<img>` tags include `loading="lazy"` attribute
+- XSS protection: quote escaping + `javascript:`/`vbscript:`/`data:` protocol blocking
+- Null `href` guard
 
 ### #5. Sidebar Filter Result Counter
-- Added `<span id="filterCount">` to search wrapper in `index.html`
-- Counter shows visible file count during filtering
-- Styled as compact badge between search input and preset button
+- Added `<span id="filterCount">` badge between search input and preset button
+- Shows `"N / total"` format, `"No matches"` with warning color when 0 results
 
 ### #1. File URL Sharing (`?file=path`)
-- On boot: parse `?file=` URL param after `await loadTree()` and auto-open file
-- In `openFile()`: update URL via `history.replaceState`
+- Boot: parse `?file=` URL param after `await loadTree()`, expand tree, scroll into view
+- `openFile()`: update URL via `history.replaceState`
+- Cleanup: remove `?file=` on file delete, update on rename
 
 ### #9. Save Error Retry Banner
-- Added `.save-error-banner` element to `index.html`
-- On save failure: show persistent red banner with Retry/Dismiss buttons (replaces toast)
-- Banner hides on: successful save, file switch, entering edit mode
+- Persistent red banner with Retry/Dismiss buttons (replaces toast)
+- `isSaving` guard prevents duplicate saves
+- Keyboard: Enter=Retry (skips textarea/input), Esc=Dismiss (integrated in main Escape chain)
+- Retry button disabled styling + "Saving..." text during save
+- Slide-down animation, error tooltip for truncated messages
+- Banner hides on: successful save, file switch, edit mode enter, cancel edit
 
 ### #7. Focus Mode Toolbar/Status Bar Auto-Hide
-- CSS: toolbar and status-bar fade out (`opacity:0`) in focus mode
-- `.focus-bars-visible` class shows them temporarily
-- JS: `mousemove`/`keydown` triggers 2-second visibility timer
-- `fullscreenchange` handler cleans up listeners on exit
+- CSS: `opacity:0` + `pointer-events:none` in focus mode, transition 0.3s
+- `focus-bars-visible` class restores visibility
+- mousemove throttled at 100ms, keydown shows bars immediately
+- 2-second auto-hide timer, fullscreenchange cleanup
 
 ### #8. Editor Undo/Redo Preservation
-- Added `editorInsertAt(start, end, text)` helper using `document.execCommand('insertText')`
-- Replaced direct `.value =` assignments in: `mdWrap`, `mdLinePrefix`, Tab handler, table insertion, hr insertion
-- Initial content load in `enterEditMode` unchanged (no undo history needed)
+- `editorInsertAt(start, end, text)` helper using `execCommand('insertText')`
+- Fallback to `.value =` when `execCommand` fails
+- Applied to: `mdWrap`, `mdLinePrefix`, Tab handler, table/hr insertion
+
+## Reinforcement (6 rounds, 21 fixes)
+
+| Round | Fixes | Key Items |
+|-------|-------|-----------|
+| 2nd | 6 | XSS escape, filter "N/total", URL cleanup, save guard, mousemove throttle, execCommand fallback |
+| 3rd | 5 | cancelEdit banner fix, "No matches", tree scroll on boot, banner keyboard, javascript: block |
+| 4th | 3 | Enter/Esc keyboard conflicts, Escape chain integration, disabled button styling |
+| 5th | 2 | Rename URL update, href null guard |
+| 6th | 2 | Rename-in-edit draft migration, search cache reset on preview change |
+| 7th | 3 | Banner slide animation, filter warning color, error tooltip |
 
 ## Files Modified
 - `public/app.js` — All items
