@@ -102,6 +102,7 @@ marked.setOptions({
 marked.use({
   renderer: {
     image({ href, title, text }) {
+      if (!href) return '';
       // Block dangerous protocols
       if (/^\s*(javascript|vbscript|data(?!:image\/))/i.test(href)) {
         return `<img src="" alt="${(text || '').replace(/"/g, '&quot;')}" loading="lazy">`;
@@ -872,6 +873,10 @@ ctxRename.addEventListener('click', async () => {
       currentPath = newPath;
       renderBreadcrumb(newPath);
       addRecent(newPath);
+      // Update URL to reflect new file path
+      const url = new URL(window.location);
+      url.searchParams.set('file', newPath);
+      history.replaceState(null, '', url);
     }
     await loadTree();
     if (currentPath === newPath) {
