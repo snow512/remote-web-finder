@@ -27,6 +27,7 @@
         </div>
         <div class="search-wrapper">
           <input type="text" class="search-input" id="searchInput" placeholder="Filter files... (Ctrl+P)">
+          <span class="filter-count" id="filterCount"></span>
           <button class="filter-preset-btn" id="filterPresetBtn" title="Filter presets">&#9662;</button>
           <div class="filter-preset-menu" id="filterPresetMenu"></div>
         </div>
@@ -52,6 +53,15 @@
           <button id="btnEdit" class="btn btn-edit">Edit</button>
           <button id="btnSave" class="btn btn-save" style="display:none">Save</button>
           <button id="btnCancel" class="btn btn-cancel" style="display:none">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Save error banner -->
+      <div class="save-error-banner" id="saveErrorBanner" style="display:none">
+        <span class="save-error-msg" id="saveErrorMsg"></span>
+        <div class="save-error-actions">
+          <button class="save-error-btn retry" id="saveErrorRetry">Retry</button>
+          <button class="save-error-btn dismiss" id="saveErrorDismiss">Dismiss</button>
         </div>
       </div>
 

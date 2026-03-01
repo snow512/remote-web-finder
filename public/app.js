@@ -54,6 +54,7 @@ const overlay = $('#sidebarOverlay');
 const searchInput = $('#searchInput');
 const filterPresetBtn = $('#filterPresetBtn');
 const filterPresetMenu = $('#filterPresetMenu');
+const filterCountEl = $('#filterCount');
 const recentFilesEl = $('#recentFiles');
 const recentListEl = $('#recentList');
 const recentClearBtn = $('#recentClear');
@@ -72,6 +73,10 @@ const resizeHandle = $('#resizeHandle');
 const contextMenu = $('#contextMenu');
 const ctxDelete = $('#ctxDelete');
 const ctxRename = $('#ctxRename');
+const saveErrorBanner = $('#saveErrorBanner');
+const saveErrorMsg = $('#saveErrorMsg');
+const saveErrorRetry = $('#saveErrorRetry');
+const saveErrorDismiss = $('#saveErrorDismiss');
 const mdToolbar = $('#mdToolbar');
 const btnWrap = $('#btnWrap');
 const btnFocus = $('#btnFocus');
@@ -92,6 +97,15 @@ marked.setOptions({
   },
   breaks: true,
   gfm: true,
+});
+
+marked.use({
+  renderer: {
+    image({ href, title, text }) {
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<img src="${href}" alt="${text}"${titleAttr} loading="lazy">`;
+    }
+  }
 });
 
 /* ============================================================
@@ -572,10 +586,17 @@ function applyFilter() {
   const q = searchInput.value.trim().toLowerCase();
   if (!q && !activePreset) {
     treeEl.querySelectorAll('.tree-item.hidden, .tree-dir.hidden').forEach(el => el.classList.remove('hidden'));
+    filterCountEl.classList.remove('visible');
+    filterCountEl.textContent = '';
     return;
   }
   const exts = activePreset ? activePreset.exts.split(/\s+/).filter(Boolean) : null;
   filterTree(treeEl, q, exts);
+
+  // Update filter result counter
+  const visibleFiles = treeEl.querySelectorAll('.tree-item[data-path]:not(.hidden)').length;
+  filterCountEl.textContent = `${visibleFiles}`;
+  filterCountEl.classList.add('visible');
 }
 
 function filterTree(container, query, exts) {
@@ -700,9 +721,15 @@ async function openFile(filePath, rowEl) {
   toolbarEl.style.display = 'flex';
   toolbarEl.classList.add('has-file');
 
+  // Update URL for sharing
+  const url = new URL(window.location);
+  url.searchParams.set('file', filePath);
+  history.replaceState(null, '', url);
+
   closeSidebar();
   closeContentSearch();
   closeContextMenu();
+  hideSaveErrorBanner();
   addRecent(filePath);
 
   // Abort previous file load if still in-flight
@@ -1069,6 +1096,7 @@ editorEl.addEventListener('scroll', syncLineNumbersScroll);
    ============================================================ */
 function enterEditMode() {
   isEditing = true;
+  hideSaveErrorBanner();
   previewEl.style.display = 'none';
   editorPanel.style.display = 'flex';
   editorEl.value = originalContent;
@@ -1121,6 +1149,22 @@ editorEl.addEventListener('input', () => {
   livePreviewTimer = setTimeout(updateLivePreview, 150);
 });
 
+function showSaveErrorBanner(msg) {
+  saveErrorMsg.textContent = 'Save failed: ' + msg;
+  saveErrorBanner.style.display = 'flex';
+}
+
+function hideSaveErrorBanner() {
+  saveErrorBanner.style.display = 'none';
+}
+
+saveErrorRetry.addEventListener('click', () => {
+  hideSaveErrorBanner();
+  saveFile();
+});
+
+saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
+
 async function saveFile() {
   if (!currentPath) return;
   const content = editorEl.value;
@@ -1135,10 +1179,11 @@ async function saveFile() {
     setDirty(false);
     clearDraft(currentPath);
     stopDraftTimer();
+    hideSaveErrorBanner();
     showToast('Saved successfully', 'success');
     showPreview(content, currentPath);
   } catch (err) {
-    showToast('Save failed: ' + err.message, 'error');
+    showSaveErrorBanner(err.message);
   }
 }
 
@@ -1154,17 +1199,24 @@ function cancelEdit() {
 /* ============================================================
    12.5. MARKDOWN TOOLBAR
    ============================================================ */
+
+// Helper: insert text at [start, end) preserving undo/redo history
+function editorInsertAt(start, end, text) {
+  editorEl.focus();
+  editorEl.selectionStart = start;
+  editorEl.selectionEnd = end;
+  document.execCommand('insertText', false, text);
+}
+
 function mdWrap(before, after) {
   const start = editorEl.selectionStart;
   const end = editorEl.selectionEnd;
   const selected = editorEl.value.substring(start, end);
   const replacement = before + (selected || 'text') + (after || '');
-  editorEl.value = editorEl.value.substring(0, start) + replacement + editorEl.value.substring(end);
+  editorInsertAt(start, end, replacement);
   // Select the inner text
   editorEl.selectionStart = start + before.length;
   editorEl.selectionEnd = start + before.length + (selected || 'text').length;
-  editorEl.focus();
-  editorEl.dispatchEvent(new Event('input'));
 }
 
 function mdLinePrefix(prefix) {
@@ -1172,10 +1224,8 @@ function mdLinePrefix(prefix) {
   const val = editorEl.value;
   // Find start of current line
   const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-  editorEl.value = val.substring(0, lineStart) + prefix + val.substring(lineStart);
+  editorInsertAt(lineStart, lineStart, prefix);
   editorEl.selectionStart = editorEl.selectionEnd = start + prefix.length;
-  editorEl.focus();
-  editorEl.dispatchEvent(new Event('input'));
 }
 
 const mdActions = {
@@ -1203,12 +1253,19 @@ const mdActions = {
     const val = editorEl.value;
     const before = val.substring(0, pos);
     const needNl = before.length > 0 && !before.endsWith('\n') ? '\n' : '';
-    editorEl.value = before + needNl + '\n' + tbl + val.substring(pos);
-    editorEl.selectionStart = editorEl.selectionEnd = pos + needNl.length + 1 + tbl.length;
-    editorEl.focus();
-    editorEl.dispatchEvent(new Event('input'));
+    const insertText = needNl + '\n' + tbl;
+    editorInsertAt(pos, pos, insertText);
+    editorEl.selectionStart = editorEl.selectionEnd = pos + insertText.length;
   },
-  hr:      () => { const pos = editorEl.selectionStart; const val = editorEl.value; const before = val.substring(0, pos); const needNl = before.length > 0 && !before.endsWith('\n') ? '\n' : ''; editorEl.value = before + needNl + '\n---\n\n' + val.substring(pos); editorEl.selectionStart = editorEl.selectionEnd = pos + needNl.length + 6; editorEl.focus(); editorEl.dispatchEvent(new Event('input')); },
+  hr:      () => {
+    const pos = editorEl.selectionStart;
+    const val = editorEl.value;
+    const before = val.substring(0, pos);
+    const needNl = before.length > 0 && !before.endsWith('\n') ? '\n' : '';
+    const insertText = needNl + '\n---\n\n';
+    editorInsertAt(pos, pos, insertText);
+    editorEl.selectionStart = editorEl.selectionEnd = pos + insertText.length;
+  },
 };
 
 mdToolbar.addEventListener('click', (e) => {
@@ -1223,6 +1280,7 @@ mdToolbar.addEventListener('click', (e) => {
    ============================================================ */
 let searchMatches = [];
 let searchIdx = -1;
+let lastSearchQuery = '';
 
 function openContentSearch() {
   searchBar.style.display = 'flex';
@@ -1238,6 +1296,7 @@ function closeContentSearch() {
   clearSearchHighlights();
   searchMatches = [];
   searchIdx = -1;
+  lastSearchQuery = '';
 }
 
 function clearSearchHighlights() {
@@ -1250,6 +1309,8 @@ function clearSearchHighlights() {
 
 function performContentSearch() {
   const query = searchText.value.trim();
+  if (query === lastSearchQuery) return;
+  lastSearchQuery = query;
   clearSearchHighlights();
   searchMatches = [];
   searchIdx = -1;
@@ -1334,7 +1395,7 @@ function searchPrevMatch() {
 let searchTimer = null;
 searchText.addEventListener('input', () => {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(performContentSearch, 200);
+  searchTimer = setTimeout(performContentSearch, 300);
 });
 
 searchText.addEventListener('keydown', (e) => {
@@ -1554,6 +1615,7 @@ btnWrap.addEventListener('click', () => {
    17.6. FOCUS MODE
    ============================================================ */
 let isFocusMode = false;
+let focusBarsTimer = null;
 
 function toggleFocusMode() {
   if (!document.fullscreenElement) {
@@ -1563,10 +1625,40 @@ function toggleFocusMode() {
   }
 }
 
+function showFocusBars() {
+  layoutEl.classList.add('focus-bars-visible');
+  clearTimeout(focusBarsTimer);
+  focusBarsTimer = setTimeout(() => {
+    layoutEl.classList.remove('focus-bars-visible');
+  }, 2000);
+}
+
+function setupFocusBarListeners() {
+  document.addEventListener('mousemove', onFocusActivity);
+  document.addEventListener('keydown', onFocusActivity);
+}
+
+function cleanupFocusBarListeners() {
+  document.removeEventListener('mousemove', onFocusActivity);
+  document.removeEventListener('keydown', onFocusActivity);
+  clearTimeout(focusBarsTimer);
+  layoutEl.classList.remove('focus-bars-visible');
+}
+
+function onFocusActivity() {
+  if (isFocusMode) showFocusBars();
+}
+
 document.addEventListener('fullscreenchange', () => {
   isFocusMode = !!document.fullscreenElement;
   layoutEl.classList.toggle('focus-mode', isFocusMode);
   btnFocus.classList.toggle('active', isFocusMode);
+  if (isFocusMode) {
+    showFocusBars();
+    setupFocusBarListeners();
+  } else {
+    cleanupFocusBarListeners();
+  }
 });
 
 btnFocus.addEventListener('click', toggleFocusMode);
@@ -1613,11 +1705,8 @@ editorEl.addEventListener('keydown', (e) => {
     e.preventDefault();
     const start = editorEl.selectionStart;
     const end = editorEl.selectionEnd;
-    editorEl.value = editorEl.value.substring(0, start) + '  ' + editorEl.value.substring(end);
+    editorInsertAt(start, end, '  ');
     editorEl.selectionStart = editorEl.selectionEnd = start + 2;
-    updateLineNumbers();
-    // Trigger dirty state and live preview update
-    editorEl.dispatchEvent(new Event('input'));
   }
 });
 
@@ -1862,7 +1951,14 @@ $('#settingsWrapToggle')?.addEventListener('click', () => {
    BOOT
    ============================================================ */
 recentClearBtn.addEventListener('click', clearRecent);
-loadTree();
+await loadTree();
+
+// Open file from URL ?file= parameter
+const urlFileParam = new URLSearchParams(window.location.search).get('file');
+if (urlFileParam) {
+  const row = treeEl.querySelector(`[data-path="${CSS.escape(urlFileParam)}"]`);
+  openFile(urlFileParam, row);
+}
 
 // Open sidebar on mobile when no file is selected
 if (!currentPath && window.innerWidth <= 768) {

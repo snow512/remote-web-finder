@@ -172,6 +172,26 @@ html, body {
   color: var(--text-muted);
 }
 
+/* Filter result counter badge */
+.filter-count {
+  display: none;
+  align-items: center;
+  padding: 0 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-right: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.filter-count.visible {
+  display: flex;
+}
+
 .filter-preset-btn {
   padding: 0 8px;
   background: var(--bg);
@@ -588,6 +608,58 @@ html, body {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* === Save Error Banner === */
+.save-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--btn-cancel);
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.save-error-msg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-error-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.save-error-btn {
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  color: #fff;
+  transition: background 0.15s;
+}
+
+.save-error-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.save-error-btn.retry {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.6);
+  font-weight: 600;
+}
+
+.save-error-btn.retry:hover {
+  background: rgba(255,255,255,0.3);
 }
 
 /* === Content Search Bar === */
@@ -1088,6 +1160,20 @@ mark.search-hl.active {
 
 .layout.focus-mode .content {
   width: 100%;
+}
+
+/* Auto-hide toolbar/status-bar in focus mode */
+.layout.focus-mode .toolbar,
+.layout.focus-mode .status-bar {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.layout.focus-mode.focus-bars-visible .toolbar,
+.layout.focus-mode.focus-bars-visible .status-bar {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .btn-icon {
