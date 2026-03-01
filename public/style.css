@@ -450,6 +450,7 @@ html, body {
   border-radius: 4px;
   margin: 0 4px;
   transition: background 0.1s;
+  overflow: hidden;
 }
 
 .tree-item:hover {
@@ -480,6 +481,24 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Marquee scroll for active item with long name */
+@keyframes marqueeScroll {
+  0%, 20%  { transform: translateX(0); }
+  45%, 70% { transform: translateX(calc(var(--overflow-px, 0) * -1px)); }
+  85%, 100% { transform: translateX(0); }
+}
+
+.tree-item.active .name.marquee {
+  overflow: visible;
+  text-overflow: clip;
+  animation: marqueeScroll 4s ease-in-out 0.8s infinite;
+}
+
+/* Long-press visual feedback (mobile) */
+.tree-item.long-press-holding {
+  background: var(--bg-active);
 }
 
 .tree-item.focused {

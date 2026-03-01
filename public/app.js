@@ -21,6 +21,9 @@ let focusedTreeItem = null;
 let openFileController = null;
 let draftTimer = null;
 let tocObserver = null;
+let longPressTimer = null;
+let longPressFired = false;
+const LONG_PRESS_MS = 500;
 const scrollPositions = new Map();
 
 const RECENT_KEY = 'rwf-recent';
@@ -218,7 +221,7 @@ async function loadTree() {
   // Restore active highlight for current file
   if (currentPath) {
     const activeRow = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
-    if (activeRow) activeRow.classList.add('active');
+    if (activeRow) { activeRow.classList.add('active'); applyMarquee(activeRow); }
   }
   renderRecent();
   // Reapply active filter after tree rebuild
@@ -236,7 +239,7 @@ function renderTree(items, parentEl, depth) {
       row.className = 'tree-item';
       row.style.setProperty('--indent', `${12 + depth * 16}px`);
       const fileCount = countFiles(item.children);
-      row.innerHTML = `<span class="icon">&#9654;</span><span class="name">${esc(item.name)}</span><span class="file-count">${fileCount}</span>`;
+      row.innerHTML = `<span class="icon">&#9654;</span><span class="name" title="${esc(item.path)}">${esc(item.name)}</span><span class="file-count">${fileCount}</span>`;
 
       const childrenEl = document.createElement('div');
       childrenEl.className = 'tree-children';
@@ -273,7 +276,7 @@ function renderTree(items, parentEl, depth) {
           if (currentPath === newPath) {
             expandPathTo(newPath);
             const newRow = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
-            if (newRow) newRow.classList.add('active');
+            if (newRow) { newRow.classList.add('active'); applyMarquee(newRow); }
           }
         } catch (err) {
           showToast('Move failed: ' + err.message, 'error');
@@ -291,11 +294,12 @@ function renderTree(items, parentEl, depth) {
       row.style.setProperty('--indent', `${12 + depth * 16}px`);
 
       const icon = getFileIcon(item.name);
-      row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(item.name)}</span>`;
+      row.innerHTML = `<span class="icon">${icon}</span><span class="name" title="${esc(item.path)}">${esc(item.name)}</span>`;
       row.dataset.path = item.path;
 
       row.addEventListener('click', () => openFile(item.path, row));
       row.addEventListener('contextmenu', (e) => showContextMenu(e, item.path));
+      initLongPress(row, item.path, 'file');
 
       // Drag source (files)
       row.draggable = true;
@@ -355,6 +359,80 @@ function expandPathTo(filePath) {
       if (ch) expandDir(ch);
     }
   }
+}
+
+/* === Marquee scroll helpers === */
+function applyMarquee(rowEl) {
+  if (!rowEl) return;
+  const nameEl = rowEl.querySelector('.name');
+  if (!nameEl) return;
+  // Check if text overflows
+  const overflow = nameEl.scrollWidth - nameEl.clientWidth;
+  if (overflow > 0) {
+    nameEl.style.setProperty('--overflow-px', overflow);
+    nameEl.classList.add('marquee');
+  }
+}
+
+function removeMarquee(rowEl) {
+  if (!rowEl) return;
+  const nameEl = rowEl.querySelector('.name');
+  if (!nameEl) return;
+  nameEl.classList.remove('marquee');
+  nameEl.style.removeProperty('--overflow-px');
+}
+
+/* === Long-press for mobile context menu === */
+function initLongPress(rowEl, targetPath, type) {
+  let startX, startY;
+
+  rowEl.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    longPressFired = false;
+    rowEl.classList.add('long-press-holding');
+
+    longPressTimer = setTimeout(() => {
+      longPressFired = true;
+      rowEl.classList.remove('long-press-holding');
+      // Create a fake event with touch coordinates for showContextMenu
+      showContextMenu({
+        preventDefault() {},
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      }, targetPath, type);
+    }, LONG_PRESS_MS);
+  }, { passive: true });
+
+  rowEl.addEventListener('touchmove', (e) => {
+    if (!longPressTimer) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - startX);
+    const dy = Math.abs(touch.clientY - startY);
+    if (dx > 10 || dy > 10) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+      rowEl.classList.remove('long-press-holding');
+    }
+  }, { passive: true });
+
+  const cancelPress = () => {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    rowEl.classList.remove('long-press-holding');
+  };
+  rowEl.addEventListener('touchend', cancelPress, { passive: true });
+  rowEl.addEventListener('touchcancel', cancelPress, { passive: true });
+
+  // Suppress click after long-press fires (prevents file from opening)
+  rowEl.addEventListener('click', (e) => {
+    if (longPressFired) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      longPressFired = false;
+    }
+  }, true); // capture phase
 }
 
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp', '.ico'];
@@ -727,8 +805,8 @@ async function openFile(filePath, rowEl) {
   stopDraftTimer();
   clearTimeout(livePreviewTimer);
 
-  treeEl.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
-  if (rowEl) rowEl.classList.add('active');
+  treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
+  if (rowEl) { rowEl.classList.add('active'); applyMarquee(rowEl); }
 
   expandPathTo(filePath);
 
