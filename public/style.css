@@ -214,7 +214,7 @@ html, body {
 }
 
 .filter-preset-btn:hover {
-  background: var(--hover);
+  background: var(--bg-hover);
   color: var(--text);
 }
 
@@ -262,7 +262,7 @@ html, body {
 }
 
 .filter-preset-item:hover {
-  background: var(--hover);
+  background: var(--bg-hover);
 }
 
 .filter-preset-item.selected {
@@ -343,7 +343,7 @@ html, body {
 }
 
 .preset-footer-btn:hover {
-  background: var(--hover);
+  background: var(--bg-hover);
   color: var(--text);
 }
 
@@ -726,6 +726,10 @@ html, body {
   color: var(--text-muted);
   white-space: nowrap;
   min-width: 40px;
+}
+
+.search-count.no-results {
+  color: var(--btn-cancel);
 }
 
 .search-nav {

@@ -5,7 +5,7 @@
 **Status:** ✅ Complete
 
 ## Summary
-Implement 7 UX and feature improvements identified during bug hunting round 3 analysis, followed by 6 rounds of reinforcement and polish.
+Implement 7 UX and feature improvements identified during bug hunting round 3 analysis, followed by 9 rounds of reinforcement and 2 rounds of improvement.
 
 ## Core Implementation (7 features)
 
@@ -48,7 +48,7 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 - Fallback to `.value =` when `execCommand` fails
 - Applied to: `mdWrap`, `mdLinePrefix`, Tab handler, table/hr insertion
 
-## Reinforcement (7 rounds, 23 fixes)
+## Reinforcement (9 rounds, 29 fixes)
 
 | Round | Fixes | Key Items |
 |-------|-------|-----------|
@@ -59,12 +59,14 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 | 6th | 2 | Rename-in-edit draft migration, search cache reset on preview change |
 | 7th | 3 | Banner slide animation, filter warning color, error tooltip |
 | 8th | 2 | loadTree reapply filter, boot expandPathTo cleanup |
+| 9th | 6 | Banner animation race conditions (bannerHideHandler), var(--hover)→var(--bg-hover), URL ?file= 404 cleanup |
 
-## Improvement (1 round, 3 enhancements)
+## Improvement (2 rounds, 6 enhancements)
 
 | Round | Enhancements | Key Items |
 |-------|-------------|-----------|
 | 1st | 3 | Search input red border on no results, filter input red border on no matches, banner slide-up exit animation |
+| 2nd | 3 | Focus mode toolbar hover protection, Ctrl+F search query persistence, search count "No results" red color |
 
 ## Files Modified
 - `public/app.js` — All items

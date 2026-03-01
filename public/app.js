@@ -762,6 +762,11 @@ async function openFile(filePath, rowEl) {
     if (!res.ok) {
       if (res.status === 404) {
         removeRecent(filePath);
+        const u = new URL(window.location);
+        if (u.searchParams.get('file') === filePath) {
+          u.searchParams.delete('file');
+          history.replaceState(null, '', u);
+        }
         throw new Error('File not found (may have been deleted)');
       }
       throw new Error(await res.text());
@@ -1180,28 +1185,40 @@ editorEl.addEventListener('input', () => {
 });
 
 let isSaving = false;
+let bannerHideHandler = null;
 
 function showSaveErrorBanner(msg) {
+  // Cancel any pending slide-up animation
+  if (bannerHideHandler) {
+    saveErrorBanner.removeEventListener('animationend', bannerHideHandler);
+    bannerHideHandler = null;
+  }
   const fullMsg = 'Save failed: ' + msg;
   saveErrorMsg.textContent = fullMsg;
   saveErrorMsg.title = fullMsg; // tooltip for truncated messages
   saveErrorRetry.disabled = false;
   saveErrorRetry.textContent = 'Retry';
   saveErrorBanner.style.display = 'flex';
+  // Force restart slide-down animation
+  saveErrorBanner.style.animation = 'none';
+  saveErrorBanner.offsetHeight; // reflow
+  saveErrorBanner.style.animation = '';
 }
 
 function hideSaveErrorBanner() {
-  if (saveErrorBanner.style.display === 'none') return;
-  saveErrorBanner.style.animation = 'bannerSlideUp 0.2s ease forwards';
-  saveErrorBanner.addEventListener('animationend', function onEnd() {
-    saveErrorBanner.removeEventListener('animationend', onEnd);
+  if (saveErrorBanner.style.display === 'none' || bannerHideHandler) return;
+  bannerHideHandler = function() {
+    saveErrorBanner.removeEventListener('animationend', bannerHideHandler);
+    bannerHideHandler = null;
     saveErrorBanner.style.display = 'none';
     saveErrorBanner.style.animation = '';
-  });
+  };
+  saveErrorBanner.style.animation = 'bannerSlideUp 0.2s ease forwards';
+  saveErrorBanner.addEventListener('animationend', bannerHideHandler);
 }
 
 function isSaveErrorBannerVisible() {
-  return saveErrorBanner.style.display !== 'none';
+  return saveErrorBanner.style.display !== 'none' && !bannerHideHandler;
 }
 
 saveErrorRetry.addEventListener('click', () => {
@@ -1346,12 +1363,13 @@ function openContentSearch() {
   searchBar.style.display = 'flex';
   searchText.focus();
   searchText.select();
+  if (searchText.value.trim()) performContentSearch();
 }
 
 function closeContentSearch() {
   searchBar.style.display = 'none';
-  searchText.value = '';
   searchText.classList.remove('no-results');
+  searchCount.classList.remove('no-results');
   searchCount.textContent = '';
   clearTimeout(searchTimer);
   clearSearchHighlights();
@@ -1393,6 +1411,7 @@ function performContentSearch() {
     ? `${searchIdx + 1}/${searchMatches.length}`
     : 'No results';
   searchText.classList.toggle('no-results', noResults);
+  searchCount.classList.toggle('no-results', noResults);
 }
 
 function highlightTextNodes(root, query) {
@@ -1706,14 +1725,25 @@ function showFocusBars() {
   }, 2000);
 }
 
+function onFocusBarsEnter() { clearTimeout(focusBarsTimer); }
+function onFocusBarsLeave() { showFocusBars(); }
+
 function setupFocusBarListeners() {
   document.addEventListener('mousemove', onFocusMouseMove);
   document.addEventListener('keydown', onFocusKeyDown);
+  toolbarEl.addEventListener('mouseenter', onFocusBarsEnter);
+  toolbarEl.addEventListener('mouseleave', onFocusBarsLeave);
+  statusBar.addEventListener('mouseenter', onFocusBarsEnter);
+  statusBar.addEventListener('mouseleave', onFocusBarsLeave);
 }
 
 function cleanupFocusBarListeners() {
   document.removeEventListener('mousemove', onFocusMouseMove);
   document.removeEventListener('keydown', onFocusKeyDown);
+  toolbarEl.removeEventListener('mouseenter', onFocusBarsEnter);
+  toolbarEl.removeEventListener('mouseleave', onFocusBarsLeave);
+  statusBar.removeEventListener('mouseenter', onFocusBarsEnter);
+  statusBar.removeEventListener('mouseleave', onFocusBarsLeave);
   clearTimeout(focusBarsTimer);
   focusMoveThrottled = false;
   layoutEl.classList.remove('focus-bars-visible');
