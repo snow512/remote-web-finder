@@ -398,7 +398,7 @@ searchInput.addEventListener('input', () => {
 });
 
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { searchInput.value = ''; applyFilter(); searchInput.blur(); }
+  if (e.key === 'Escape') { e.stopPropagation(); searchInput.value = ''; applyFilter(); searchInput.blur(); }
 });
 
 // --- Filter presets ---
@@ -1238,7 +1238,7 @@ saveErrorRetry.addEventListener('click', () => {
 saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
 
 async function saveFile() {
-  if (!currentPath || isSaving) return;
+  if (!currentPath || !isEditing || isSaving) return;
   isSaving = true;
   // Disable retry button during save
   saveErrorRetry.disabled = true;
@@ -1385,6 +1385,8 @@ function closeContentSearch() {
   searchMatches = [];
   searchIdx = -1;
   lastSearchQuery = '';
+  searchPrev.disabled = false;
+  searchNext.disabled = false;
 }
 
 function clearSearchHighlights() {
@@ -1421,6 +1423,8 @@ function performContentSearch() {
     : 'No results';
   searchText.classList.toggle('no-results', noResults);
   searchCount.classList.toggle('no-results', noResults);
+  searchPrev.disabled = searchMatches.length === 0;
+  searchNext.disabled = searchMatches.length === 0;
 }
 
 function highlightTextNodes(root, query) {

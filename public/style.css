@@ -748,6 +748,11 @@ html, body {
   border-color: var(--text-muted);
 }
 
+.search-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .search-close {
   background: none;
   border: none;
