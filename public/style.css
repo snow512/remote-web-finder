@@ -337,12 +337,31 @@ html, body {
 }
 
 .recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-muted);
   padding: 2px 16px 4px;
+}
+
+.recent-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.recent-clear:hover {
+  opacity: 1;
+  color: var(--text);
 }
 
 .recent-item {

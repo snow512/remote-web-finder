@@ -43,6 +43,7 @@ const filterPresetBtn = $('#filterPresetBtn');
 const filterPresetMenu = $('#filterPresetMenu');
 const recentFilesEl = $('#recentFiles');
 const recentListEl = $('#recentList');
+const recentClearBtn = $('#recentClear');
 const tocEl = $('#toc');
 const tocListEl = $('#tocList');
 const contentBody = $('#contentBody');
@@ -128,6 +129,11 @@ function addRecent(filePath) {
   renderRecent();
 }
 
+function clearRecent() {
+  localStorage.removeItem(RECENT_KEY);
+  renderRecent();
+}
+
 function removeRecent(filePath) {
   const list = getRecent().filter(p => p !== filePath);
   localStorage.setItem(RECENT_KEY, JSON.stringify(list));
@@ -165,6 +171,7 @@ async function loadTree() {
   renderTree(treeData, treeEl, 0);
   autoExpandDepth(1);
   renderRecent();
+  recentClearBtn.addEventListener('click', clearRecent);
 }
 
 function renderTree(items, parentEl, depth) {
