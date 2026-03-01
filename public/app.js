@@ -1,7 +1,10 @@
-/* === Material File Icons (CDN with fallback) === */
+/* === Material File Icons (CDN with timeout fallback) === */
 let materialGetIcon = null;
 try {
-  const mod = await import('https://cdn.jsdelivr.net/npm/material-file-icons@2.4.0/+esm');
+  const mod = await Promise.race([
+    import('https://cdn.jsdelivr.net/npm/material-file-icons@2.4.0/+esm'),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+  ]);
   materialGetIcon = mod.getIcon || mod.default?.getIcon;
 } catch (e) {
   console.warn('material-file-icons CDN unavailable, using fallback emoji icons');
@@ -15,6 +18,7 @@ let originalContent = '';
 let treeData = [];
 let livePreviewTimer = null;
 let focusedTreeItem = null;
+let openFileController = null;
 let draftTimer = null;
 let tocObserver = null;
 const scrollPositions = new Map();
@@ -98,6 +102,10 @@ function showToast(message, type = 'info') {
   toast.className = `toast ${type}`;
   toast.textContent = message;
   toastContainer.appendChild(toast);
+  // Limit max visible toasts
+  while (toastContainer.children.length > 5) {
+    toastContainer.firstChild.remove();
+  }
   setTimeout(() => toast.remove(), 3000);
 }
 
@@ -174,13 +182,24 @@ function renderRecent() {
    4. TREE — build, render, auto-expand
    ============================================================ */
 async function loadTree() {
-  const res = await fetch('/api/tree');
-  treeData = await res.json();
+  try {
+    const res = await fetch('/api/tree');
+    if (!res.ok) throw new Error('Server error');
+    treeData = await res.json();
+  } catch (err) {
+    showToast('Failed to load file tree: ' + err.message, 'error');
+    return;
+  }
   treeEl.innerHTML = '';
+  focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
   autoExpandDepth(1);
+  // Restore active highlight for current file
+  if (currentPath) {
+    const activeRow = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
+    if (activeRow) activeRow.classList.add('active');
+  }
   renderRecent();
-  recentClearBtn.addEventListener('click', clearRecent);
 }
 
 function renderTree(items, parentEl, depth) {
@@ -300,6 +319,7 @@ function autoExpandDepth(maxDepth) {
   }
   expand(treeEl, 1);
 }
+
 
 function expandPathTo(filePath) {
   const parts = filePath.split('/');
@@ -665,8 +685,9 @@ async function openFile(filePath, rowEl) {
 
   // Save scroll position of previous file
   saveScrollPosition();
-  // Stop draft auto-save for previous file
+  // Stop timers for previous file
   stopDraftTimer();
+  clearTimeout(livePreviewTimer);
 
   treeEl.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
   if (rowEl) rowEl.classList.add('active');
@@ -684,6 +705,11 @@ async function openFile(filePath, rowEl) {
   closeContextMenu();
   addRecent(filePath);
 
+  // Abort previous file load if still in-flight
+  if (openFileController) openFileController.abort();
+  openFileController = new AbortController();
+  const { signal } = openFileController;
+
   // Image file — show image directly
   if (isImageFile(filePath)) {
     originalContent = '';
@@ -692,7 +718,7 @@ async function openFile(filePath, rowEl) {
   }
 
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(filePath)}`);
+    const res = await fetch(`/api/file?path=${encodeURIComponent(filePath)}`, { signal });
     if (!res.ok) {
       if (res.status === 404) {
         removeRecent(filePath);
@@ -727,6 +753,7 @@ async function openFile(filePath, rowEl) {
     // Restore scroll position after render
     restoreScrollPosition(filePath);
   } catch (err) {
+    if (err.name === 'AbortError') return; // superseded by newer openFile call
     previewEl.innerHTML = `<div style="color:var(--btn-cancel);padding:20px">Error loading file: ${esc(err.message)}</div>`;
     showPreviewMode();
   }
@@ -777,7 +804,7 @@ ctxDelete.addEventListener('click', async () => {
       setDirty(false);
       toolbarEl.style.display = 'none';
       toolbarEl.classList.remove('has-file');
-      previewEl.innerHTML = '<div class="welcome"><h1>Remote Web Finder</h1><p>Select a file from the sidebar.</p></div>';
+      previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
       document.title = BASE_TITLE;
       statusBar.style.display = 'none';
     }
@@ -846,7 +873,8 @@ function showImagePreview(filePath) {
   if (img) {
     img.onerror = () => {
       removeRecent(filePath);
-      showToast('Image not found (removed from recent)', 'warning');
+      if (currentPath !== filePath) return; // user navigated away
+      showToast('Image not found (removed from recent)', 'error');
       previewEl.innerHTML = `<div class="welcome"><h1>Image not found</h1><p>${esc(filePath)}</p></div>`;
     };
   }
@@ -1119,6 +1147,7 @@ function cancelEdit() {
   setDirty(false);
   clearDraft(currentPath);
   stopDraftTimer();
+  clearTimeout(livePreviewTimer);
   showPreview(originalContent, currentPath);
 }
 
@@ -1205,6 +1234,7 @@ function closeContentSearch() {
   searchBar.style.display = 'none';
   searchText.value = '';
   searchCount.textContent = '';
+  clearTimeout(searchTimer);
   clearSearchHighlights();
   searchMatches = [];
   searchIdx = -1;
@@ -1831,4 +1861,10 @@ $('#settingsWrapToggle')?.addEventListener('click', () => {
 /* ============================================================
    BOOT
    ============================================================ */
+recentClearBtn.addEventListener('click', clearRecent);
 loadTree();
+
+// Open sidebar on mobile when no file is selected
+if (!currentPath && window.innerWidth <= 768) {
+  openSidebar();
+}
