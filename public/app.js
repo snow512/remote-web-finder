@@ -1,3 +1,12 @@
+/* === Material File Icons (CDN with fallback) === */
+let materialGetIcon = null;
+try {
+  const mod = await import('https://cdn.jsdelivr.net/npm/material-file-icons@2.4.0/+esm');
+  materialGetIcon = mod.getIcon || mod.default?.getIcon;
+} catch (e) {
+  console.warn('material-file-icons CDN unavailable, using fallback emoji icons');
+}
+
 /* === State === */
 let currentPath = null;
 let isEditing = false;
@@ -313,6 +322,15 @@ function isImageFile(name) {
 }
 
 function getFileIcon(name) {
+  if (materialGetIcon) {
+    try {
+      // Normalize to extension-only so same ext always gets the same icon
+      const dotIdx = name.lastIndexOf('.');
+      const lookup = dotIdx > 0 ? 'file' + name.substring(dotIdx) : name;
+      const result = materialGetIcon(lookup);
+      if (result && result.svg) return result.svg;
+    } catch (_) { /* fallback below */ }
+  }
   if (name.endsWith('.md')) return '&#128196;';
   if (name.endsWith('.json')) return '&#123;&#125;';
   if (name.endsWith('.yml') || name.endsWith('.yaml')) return '&#9881;';

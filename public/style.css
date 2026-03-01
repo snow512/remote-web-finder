@@ -391,6 +391,16 @@ html, body {
   margin-right: 6px;
   font-size: 12px;
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* === Tree === */
@@ -432,7 +442,10 @@ html, body {
   font-size: 13px;
   flex-shrink: 0;
   width: 18px;
-  text-align: center;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tree-item .name {
