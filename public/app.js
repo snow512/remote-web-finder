@@ -102,6 +102,10 @@ marked.setOptions({
 marked.use({
   renderer: {
     image({ href, title, text }) {
+      // Block dangerous protocols
+      if (/^\s*(javascript|vbscript|data(?!:image\/))/i.test(href)) {
+        return `<img src="" alt="${(text || '').replace(/"/g, '&quot;')}" loading="lazy">`;
+      }
       const safeHref = href.replace(/"/g, '&quot;');
       const safeText = (text || '').replace(/"/g, '&quot;');
       const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
@@ -598,7 +602,7 @@ function applyFilter() {
   // Update filter result counter
   const visibleFiles = treeEl.querySelectorAll('.tree-item[data-path]:not(.hidden)').length;
   const totalFiles = treeEl.querySelectorAll('.tree-item[data-path]').length;
-  filterCountEl.textContent = `${visibleFiles} / ${totalFiles}`;
+  filterCountEl.textContent = visibleFiles === 0 ? 'No matches' : `${visibleFiles} / ${totalFiles}`;
   filterCountEl.classList.add('visible');
 }
 
@@ -1169,12 +1173,29 @@ function hideSaveErrorBanner() {
   saveErrorBanner.style.display = 'none';
 }
 
+function isSaveErrorBannerVisible() {
+  return saveErrorBanner.style.display !== 'none';
+}
+
 saveErrorRetry.addEventListener('click', () => {
   hideSaveErrorBanner();
   saveFile();
 });
 
 saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
+
+document.addEventListener('keydown', (e) => {
+  if (!isSaveErrorBannerVisible()) return;
+  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !saveErrorRetry.disabled) {
+    e.preventDefault();
+    hideSaveErrorBanner();
+    saveFile();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideSaveErrorBanner();
+  }
+});
 
 async function saveFile() {
   if (!currentPath || isSaving) return;
@@ -1210,6 +1231,7 @@ function cancelEdit() {
   clearDraft(currentPath);
   stopDraftTimer();
   clearTimeout(livePreviewTimer);
+  hideSaveErrorBanner();
   showPreview(originalContent, currentPath);
 }
 
@@ -1989,7 +2011,9 @@ await loadTree();
 // Open file from URL ?file= parameter
 const urlFileParam = new URLSearchParams(window.location.search).get('file');
 if (urlFileParam) {
+  expandPathTo(urlFileParam);
   const row = treeEl.querySelector(`[data-path="${CSS.escape(urlFileParam)}"]`);
+  if (row) row.scrollIntoView({ block: 'nearest' });
   openFile(urlFileParam, row);
 }
 
