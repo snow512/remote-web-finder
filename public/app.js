@@ -102,8 +102,10 @@ marked.setOptions({
 marked.use({
   renderer: {
     image({ href, title, text }) {
-      const titleAttr = title ? ` title="${title}"` : '';
-      return `<img src="${href}" alt="${text}"${titleAttr} loading="lazy">`;
+      const safeHref = href.replace(/"/g, '&quot;');
+      const safeText = (text || '').replace(/"/g, '&quot;');
+      const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
+      return `<img src="${safeHref}" alt="${safeText}"${titleAttr} loading="lazy">`;
     }
   }
 });
@@ -595,7 +597,8 @@ function applyFilter() {
 
   // Update filter result counter
   const visibleFiles = treeEl.querySelectorAll('.tree-item[data-path]:not(.hidden)').length;
-  filterCountEl.textContent = `${visibleFiles}`;
+  const totalFiles = treeEl.querySelectorAll('.tree-item[data-path]').length;
+  filterCountEl.textContent = `${visibleFiles} / ${totalFiles}`;
   filterCountEl.classList.add('visible');
 }
 
@@ -834,6 +837,10 @@ ctxDelete.addEventListener('click', async () => {
       previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
       document.title = BASE_TITLE;
       statusBar.style.display = 'none';
+      // Clean up URL ?file= parameter
+      const url = new URL(window.location);
+      url.searchParams.delete('file');
+      history.replaceState(null, '', url);
     }
     await loadTree();
   } catch (err) {
@@ -1149,8 +1156,12 @@ editorEl.addEventListener('input', () => {
   livePreviewTimer = setTimeout(updateLivePreview, 150);
 });
 
+let isSaving = false;
+
 function showSaveErrorBanner(msg) {
   saveErrorMsg.textContent = 'Save failed: ' + msg;
+  saveErrorRetry.disabled = false;
+  saveErrorRetry.textContent = 'Retry';
   saveErrorBanner.style.display = 'flex';
 }
 
@@ -1166,7 +1177,11 @@ saveErrorRetry.addEventListener('click', () => {
 saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
 
 async function saveFile() {
-  if (!currentPath) return;
+  if (!currentPath || isSaving) return;
+  isSaving = true;
+  // Disable retry button during save
+  saveErrorRetry.disabled = true;
+  saveErrorRetry.textContent = 'Saving...';
   const content = editorEl.value;
   try {
     const res = await fetch(`/api/file?path=${encodeURIComponent(currentPath)}`, {
@@ -1184,6 +1199,8 @@ async function saveFile() {
     showPreview(content, currentPath);
   } catch (err) {
     showSaveErrorBanner(err.message);
+  } finally {
+    isSaving = false;
   }
 }
 
@@ -1205,7 +1222,14 @@ function editorInsertAt(start, end, text) {
   editorEl.focus();
   editorEl.selectionStart = start;
   editorEl.selectionEnd = end;
-  document.execCommand('insertText', false, text);
+  // execCommand preserves native undo/redo stack
+  if (!document.execCommand('insertText', false, text)) {
+    // Fallback for browsers where execCommand is unsupported
+    const val = editorEl.value;
+    editorEl.value = val.substring(0, start) + text + val.substring(end);
+    editorEl.selectionStart = editorEl.selectionEnd = start + text.length;
+    editorEl.dispatchEvent(new Event('input'));
+  }
 }
 
 function mdWrap(before, after) {
@@ -1616,6 +1640,7 @@ btnWrap.addEventListener('click', () => {
    ============================================================ */
 let isFocusMode = false;
 let focusBarsTimer = null;
+let focusMoveThrottled = false;
 
 function toggleFocusMode() {
   if (!document.fullscreenElement) {
@@ -1634,19 +1659,27 @@ function showFocusBars() {
 }
 
 function setupFocusBarListeners() {
-  document.addEventListener('mousemove', onFocusActivity);
-  document.addEventListener('keydown', onFocusActivity);
+  document.addEventListener('mousemove', onFocusMouseMove);
+  document.addEventListener('keydown', onFocusKeyDown);
 }
 
 function cleanupFocusBarListeners() {
-  document.removeEventListener('mousemove', onFocusActivity);
-  document.removeEventListener('keydown', onFocusActivity);
+  document.removeEventListener('mousemove', onFocusMouseMove);
+  document.removeEventListener('keydown', onFocusKeyDown);
   clearTimeout(focusBarsTimer);
+  focusMoveThrottled = false;
   layoutEl.classList.remove('focus-bars-visible');
 }
 
-function onFocusActivity() {
-  if (isFocusMode) showFocusBars();
+function onFocusMouseMove() {
+  if (focusMoveThrottled) return;
+  focusMoveThrottled = true;
+  showFocusBars();
+  setTimeout(() => { focusMoveThrottled = false; }, 100);
+}
+
+function onFocusKeyDown() {
+  showFocusBars();
 }
 
 document.addEventListener('fullscreenchange', () => {
