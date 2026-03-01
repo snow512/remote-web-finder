@@ -593,7 +593,7 @@ function applyFilter() {
   const q = searchInput.value.trim().toLowerCase();
   if (!q && !activePreset) {
     treeEl.querySelectorAll('.tree-item.hidden, .tree-dir.hidden').forEach(el => el.classList.remove('hidden'));
-    filterCountEl.classList.remove('visible');
+    filterCountEl.classList.remove('visible', 'no-matches');
     filterCountEl.textContent = '';
     return;
   }
@@ -605,6 +605,7 @@ function applyFilter() {
   const totalFiles = treeEl.querySelectorAll('.tree-item[data-path]').length;
   filterCountEl.textContent = visibleFiles === 0 ? 'No matches' : `${visibleFiles} / ${totalFiles}`;
   filterCountEl.classList.add('visible');
+  filterCountEl.classList.toggle('no-matches', visibleFiles === 0);
 }
 
 function filterTree(container, query, exts) {
@@ -870,7 +871,15 @@ ctxRename.addEventListener('click', async () => {
     showToast(`Renamed: ${fileName} → ${newName.trim()}`, 'success');
     removeRecent(target);
     if (currentPath === target) {
-      currentPath = newPath;
+      // Migrate draft to new path if editing
+      if (isEditing && isDirty) {
+        clearDraft(target);
+        currentPath = newPath;
+        saveDraft();
+      } else {
+        clearDraft(target);
+        currentPath = newPath;
+      }
       renderBreadcrumb(newPath);
       addRecent(newPath);
       // Update URL to reflect new file path
@@ -927,6 +936,7 @@ function showImagePreview(filePath) {
 function showPreview(text, filePath) {
   isEditing = false;
   setDirty(false);
+  lastSearchQuery = ''; // reset search cache since preview content changes
   contentBody.classList.remove('split-mode');
   editorPanel.style.display = 'none';
   livePreviewEl.style.display = 'none';
@@ -1168,7 +1178,9 @@ editorEl.addEventListener('input', () => {
 let isSaving = false;
 
 function showSaveErrorBanner(msg) {
-  saveErrorMsg.textContent = 'Save failed: ' + msg;
+  const fullMsg = 'Save failed: ' + msg;
+  saveErrorMsg.textContent = fullMsg;
+  saveErrorMsg.title = fullMsg; // tooltip for truncated messages
   saveErrorRetry.disabled = false;
   saveErrorRetry.textContent = 'Retry';
   saveErrorBanner.style.display = 'flex';

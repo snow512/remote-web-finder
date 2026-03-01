@@ -192,6 +192,10 @@ html, body {
   display: flex;
 }
 
+.filter-count.no-matches {
+  color: var(--btn-cancel);
+}
+
 .filter-preset-btn {
   padding: 0 8px;
   background: var(--bg);
@@ -621,6 +625,12 @@ html, body {
   font-size: 13px;
   flex-shrink: 0;
   gap: 12px;
+  animation: bannerSlideDown 0.25s ease;
+}
+
+@keyframes bannerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .save-error-msg {
