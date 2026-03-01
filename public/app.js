@@ -221,6 +221,8 @@ async function loadTree() {
     if (activeRow) activeRow.classList.add('active');
   }
   renderRecent();
+  // Reapply active filter after tree rebuild
+  applyFilter();
 }
 
 function renderTree(items, parentEl, depth) {
@@ -595,6 +597,7 @@ function applyFilter() {
     treeEl.querySelectorAll('.tree-item.hidden, .tree-dir.hidden').forEach(el => el.classList.remove('hidden'));
     filterCountEl.classList.remove('visible', 'no-matches');
     filterCountEl.textContent = '';
+    searchInput.classList.remove('no-matches');
     return;
   }
   const exts = activePreset ? activePreset.exts.split(/\s+/).filter(Boolean) : null;
@@ -606,6 +609,7 @@ function applyFilter() {
   filterCountEl.textContent = visibleFiles === 0 ? 'No matches' : `${visibleFiles} / ${totalFiles}`;
   filterCountEl.classList.add('visible');
   filterCountEl.classList.toggle('no-matches', visibleFiles === 0);
+  searchInput.classList.toggle('no-matches', visibleFiles === 0);
 }
 
 function filterTree(container, query, exts) {
@@ -1187,7 +1191,13 @@ function showSaveErrorBanner(msg) {
 }
 
 function hideSaveErrorBanner() {
-  saveErrorBanner.style.display = 'none';
+  if (saveErrorBanner.style.display === 'none') return;
+  saveErrorBanner.style.animation = 'bannerSlideUp 0.2s ease forwards';
+  saveErrorBanner.addEventListener('animationend', function onEnd() {
+    saveErrorBanner.removeEventListener('animationend', onEnd);
+    saveErrorBanner.style.display = 'none';
+    saveErrorBanner.style.animation = '';
+  });
 }
 
 function isSaveErrorBannerVisible() {
@@ -1341,6 +1351,7 @@ function openContentSearch() {
 function closeContentSearch() {
   searchBar.style.display = 'none';
   searchText.value = '';
+  searchText.classList.remove('no-results');
   searchCount.textContent = '';
   clearTimeout(searchTimer);
   clearSearchHighlights();
@@ -1377,9 +1388,11 @@ function performContentSearch() {
     searchIdx = 0;
     activateMatch(0);
   }
+  const noResults = searchMatches.length === 0 && query.length > 0;
   searchCount.textContent = searchMatches.length > 0
     ? `${searchIdx + 1}/${searchMatches.length}`
     : 'No results';
+  searchText.classList.toggle('no-results', noResults);
 }
 
 function highlightTextNodes(root, query) {
@@ -2024,7 +2037,6 @@ await loadTree();
 // Open file from URL ?file= parameter
 const urlFileParam = new URLSearchParams(window.location.search).get('file');
 if (urlFileParam) {
-  expandPathTo(urlFileParam);
   const row = treeEl.querySelector(`[data-path="${CSS.escape(urlFileParam)}"]`);
   if (row) row.scrollIntoView({ block: 'nearest' });
   openFile(urlFileParam, row);

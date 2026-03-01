@@ -48,7 +48,7 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 - Fallback to `.value =` when `execCommand` fails
 - Applied to: `mdWrap`, `mdLinePrefix`, Tab handler, table/hr insertion
 
-## Reinforcement (6 rounds, 21 fixes)
+## Reinforcement (7 rounds, 23 fixes)
 
 | Round | Fixes | Key Items |
 |-------|-------|-----------|
@@ -58,6 +58,13 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 | 5th | 2 | Rename URL update, href null guard |
 | 6th | 2 | Rename-in-edit draft migration, search cache reset on preview change |
 | 7th | 3 | Banner slide animation, filter warning color, error tooltip |
+| 8th | 2 | loadTree reapply filter, boot expandPathTo cleanup |
+
+## Improvement (1 round, 3 enhancements)
+
+| Round | Enhancements | Key Items |
+|-------|-------------|-----------|
+| 1st | 3 | Search input red border on no results, filter input red border on no matches, banner slide-up exit animation |
 
 ## Files Modified
 - `public/app.js` — All items
