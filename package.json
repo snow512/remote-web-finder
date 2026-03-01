@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "start": "node server.js",
-    "test": "jest --verbose"
+    "test": "jest --verbose",
+    "install:global": "npm pack && npm install -g ./remote-web-finder-*.tgz && rm -f ./remote-web-finder-*.tgz"
   },
   "keywords": [
     "markdown",
