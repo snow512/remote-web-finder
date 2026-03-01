@@ -753,6 +753,11 @@ html, body {
   cursor: not-allowed;
 }
 
+.search-nav:disabled:hover {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
 .search-close {
   background: none;
   border: none;

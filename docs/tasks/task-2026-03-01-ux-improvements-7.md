@@ -48,7 +48,7 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 - Fallback to `.value =` when `execCommand` fails
 - Applied to: `mdWrap`, `mdLinePrefix`, Tab handler, table/hr insertion
 
-## Reinforcement (11 rounds, 33 fixes)
+## Reinforcement (12 rounds, 35 fixes)
 
 | Round | Fixes | Key Items |
 |-------|-------|-----------|
@@ -62,8 +62,9 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 | 9th | 6 | Banner animation race conditions (bannerHideHandler), var(--hover)→var(--bg-hover), URL ?file= 404 cleanup |
 | 10th | 2 | Image 404 URL cleanup, enterEditMode closes search bar (orphaned searchMatches fix) |
 | 11th | 2 | Filter Escape stopPropagation (cancelEdit conflict), saveFile isEditing guard (discarded content save) |
+| 12th | 2 | saveFile AbortController (cancel during save), search empty-query cleanup (highlights+buttons) |
 
-## Improvement (4 rounds, 10 enhancements)
+## Improvement (5 rounds, 12 enhancements)
 
 | Round | Enhancements | Key Items |
 |-------|-------------|-----------|
@@ -71,6 +72,7 @@ Implement 7 UX and feature improvements identified during bug hunting round 3 an
 | 2nd | 3 | Focus mode toolbar hover protection, Ctrl+F search query persistence, search count "No results" red color |
 | 3rd | 3 | Filter Escape key clear, directory context menu prevention, copy button duplicate click guard |
 | 4th | 1 | Search nav buttons disabled when no results |
+| 5th | 2 | Search nav disabled:hover CSS fix, Save button disabled during save |
 
 ## Files Modified
 - `public/app.js` — All items

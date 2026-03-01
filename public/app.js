@@ -1237,9 +1237,14 @@ saveErrorRetry.addEventListener('click', () => {
 
 saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
 
+let saveController = null;
+
 async function saveFile() {
   if (!currentPath || !isEditing || isSaving) return;
   isSaving = true;
+  btnSave.disabled = true;
+  if (saveController) saveController.abort();
+  saveController = new AbortController();
   // Disable retry button during save
   saveErrorRetry.disabled = true;
   saveErrorRetry.textContent = 'Saving...';
@@ -1249,6 +1254,7 @@ async function saveFile() {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain' },
       body: content,
+      signal: saveController.signal,
     });
     if (!res.ok) throw new Error(await res.text());
     originalContent = content;
@@ -1259,14 +1265,17 @@ async function saveFile() {
     showToast('Saved successfully', 'success');
     showPreview(content, currentPath);
   } catch (err) {
+    if (err.name === 'AbortError') return;
     showSaveErrorBanner(err.message);
   } finally {
     isSaving = false;
+    btnSave.disabled = false;
   }
 }
 
 function cancelEdit() {
   if (isDirty && !confirm('Discard unsaved changes?')) return;
+  if (saveController) saveController.abort();
   setDirty(false);
   clearDraft(currentPath);
   stopDraftTimer();
@@ -1407,6 +1416,10 @@ function performContentSearch() {
 
   if (!query || isEditing) {
     searchCount.textContent = '';
+    searchText.classList.remove('no-results');
+    searchCount.classList.remove('no-results');
+    searchPrev.disabled = true;
+    searchNext.disabled = true;
     return;
   }
 
