@@ -662,6 +662,15 @@ html, body {
   background: rgba(255,255,255,0.3);
 }
 
+.save-error-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-error-btn:disabled:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 /* === Content Search Bar === */
 .search-bar {
   display: flex;

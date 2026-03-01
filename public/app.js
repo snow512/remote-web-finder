@@ -1184,19 +1184,6 @@ saveErrorRetry.addEventListener('click', () => {
 
 saveErrorDismiss.addEventListener('click', hideSaveErrorBanner);
 
-document.addEventListener('keydown', (e) => {
-  if (!isSaveErrorBannerVisible()) return;
-  if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !saveErrorRetry.disabled) {
-    e.preventDefault();
-    hideSaveErrorBanner();
-    saveFile();
-  }
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    hideSaveErrorBanner();
-  }
-});
-
 async function saveFile() {
   if (!currentPath || isSaving) return;
   isSaving = true;
@@ -1592,11 +1579,20 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape') {
+    if (isSaveErrorBannerVisible()) { hideSaveErrorBanner(); return; }
     if ($('#settingsOverlay')?.style.display !== 'none') { closeSettings(); return; }
     if (shortcutsOverlay.style.display !== 'none') { closeShortcutsHelp(); return; }
     if (searchBar.style.display !== 'none') { closeContentSearch(); return; }
     if (isFocusMode) { toggleFocusMode(); return; }
     if (isEditing) { cancelEdit(); return; }
+  }
+  // Save error banner: Enter to retry (only when not typing in editor/inputs)
+  if (e.key === 'Enter' && isSaveErrorBannerVisible() && !saveErrorRetry.disabled
+      && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+    e.preventDefault();
+    hideSaveErrorBanner();
+    saveFile();
+    return;
   }
   if (e.ctrlKey && e.key === 'p') {
     e.preventDefault();
