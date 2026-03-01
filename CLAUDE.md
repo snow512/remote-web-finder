@@ -11,7 +11,7 @@ It organizes key information so Claude can quickly understand the project contex
 |---------|----------|-------|
 | Source code (comments, variables) | English | All code comments and identifiers in English |
 | Documentation (docs/, README, etc.) | English | All project documents in English |
-| Commit messages | Korean | Git commit messages in Korean |
+| Commit messages | English | Git commit messages in English |
 | Claude conversation | Korean | Respond to user in Korean |
 
 ---
