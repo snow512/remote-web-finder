@@ -97,6 +97,7 @@ function createPopupMenu({ containerEl, onClose }) {
     containerEl.style.left = `${x}px`;
     containerEl.style.top = `${y}px`;
     requestAnimationFrame(() => {
+      if (!open) return;
       const rect = containerEl.getBoundingClientRect();
       if (rect.right > window.innerWidth) containerEl.style.left = `${window.innerWidth - rect.width - 4}px`;
       if (rect.bottom > window.innerHeight) containerEl.style.top = `${window.innerHeight - rect.height - 4}px`;
@@ -1782,6 +1783,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape') {
+    if (ctxMenu.isOpen()) { ctxMenu.close(); return; }
     if (isSaveErrorBannerVisible()) { hideSaveErrorBanner(); return; }
     if (settingsDialog.isOpen()) { settingsDialog.close(); return; }
     if (shortcutsDialog.isOpen()) { shortcutsDialog.close(); return; }
@@ -1822,7 +1824,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === '?' && !isEditing && !e.ctrlKey && !e.metaKey) {
-    if (shortcutsOverlay.style.display !== 'none') { closeShortcutsHelp(); return; }
+    if (shortcutsDialog.isOpen()) { closeShortcutsHelp(); return; }
     openShortcutsHelp();
     return;
   }
