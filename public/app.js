@@ -865,6 +865,8 @@ async function openFile(filePath, rowEl) {
     if (!confirm('Discard unsaved changes?')) return;
   }
 
+  // Abort in-flight save for previous file
+  if (saveController) { saveController.abort(); saveController = null; }
   // Save scroll position of previous file
   saveScrollPosition();
   // Stop timers for previous file
@@ -1362,7 +1364,7 @@ function showSaveErrorBanner(msg) {
 }
 
 function hideSaveErrorBanner() {
-  if (saveErrorBanner.style.display === 'none' || bannerHideHandler) return;
+  if (saveErrorBanner.style.display !== 'flex' || bannerHideHandler) return;
   bannerHideHandler = function() {
     saveErrorBanner.removeEventListener('animationend', bannerHideHandler);
     bannerHideHandler = null;
@@ -1374,7 +1376,7 @@ function hideSaveErrorBanner() {
 }
 
 function isSaveErrorBannerVisible() {
-  return saveErrorBanner.style.display !== 'none' && !bannerHideHandler;
+  return saveErrorBanner.style.display === 'flex' && !bannerHideHandler;
 }
 
 saveErrorRetry.addEventListener('click', () => {
