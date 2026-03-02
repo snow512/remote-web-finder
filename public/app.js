@@ -96,12 +96,9 @@ function createPopupMenu({ containerEl, onClose }) {
     containerEl.style.display = 'block';
     containerEl.style.left = `${x}px`;
     containerEl.style.top = `${y}px`;
-    requestAnimationFrame(() => {
-      if (!open) return;
-      const rect = containerEl.getBoundingClientRect();
-      if (rect.right > window.innerWidth) containerEl.style.left = `${window.innerWidth - rect.width - 4}px`;
-      if (rect.bottom > window.innerHeight) containerEl.style.top = `${window.innerHeight - rect.height - 4}px`;
-    });
+    const rect = containerEl.getBoundingClientRect();
+    if (rect.right > window.innerWidth) containerEl.style.left = `${window.innerWidth - rect.width - 4}px`;
+    if (rect.bottom > window.innerHeight) containerEl.style.top = `${window.innerHeight - rect.height - 4}px`;
   }
   function close() {
     if (!open) return;
@@ -1787,7 +1784,7 @@ document.addEventListener('keydown', (e) => {
     if (isSaveErrorBannerVisible()) { hideSaveErrorBanner(); return; }
     if (settingsDialog.isOpen()) { settingsDialog.close(); return; }
     if (shortcutsDialog.isOpen()) { shortcutsDialog.close(); return; }
-    if (searchBar.style.display !== 'none') { closeContentSearch(); return; }
+    if (searchBar.style.display === 'flex') { closeContentSearch(); return; }
     if (isFocusMode) { toggleFocusMode(); return; }
     if (isEditing) { cancelEdit(); return; }
   }
