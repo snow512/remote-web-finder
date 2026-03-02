@@ -2,7 +2,7 @@
 
 - **Created:** 2026-03-02
 - **Priority:** 🟡 Medium
-- **Status:** 🔄 In Progress
+- **Status:** ✅ Complete
 - **Branch:** develop
 
 ---
@@ -22,6 +22,11 @@
 - [x] `initLongPress()` 함수 구현 (touchstart/touchmove/touchend)
 - [x] `renderTree()`에서 파일 row에 `initLongPress()` 연결
 - [x] `.long-press-holding` CSS 스타일 추가
+
+## Post-implementation Fixes
+- `applyMarquee()`: rAF로 감싸 레이아웃 완료 후 측정 (`scrollWidth` 정확도 향상)
+- `initLongPress()`: `longPressTimer`/`longPressFired` 전역 변수 → 클로저 로컬 변수로 격리
+- CSS: `.tree-item .name` — `flex: 1; min-width: 0` 추가 (truncation 정상화)
 
 ## Modified Files
 - `public/style.css`

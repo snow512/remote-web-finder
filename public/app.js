@@ -21,8 +21,6 @@ let focusedTreeItem = null;
 let openFileController = null;
 let draftTimer = null;
 let tocObserver = null;
-let longPressTimer = null;
-let longPressFired = false;
 const LONG_PRESS_MS = 500;
 const scrollPositions = new Map();
 
@@ -89,6 +87,60 @@ const layoutEl = $('.layout');
 const statusBar = $('#statusBar');
 const statusInfo = $('#statusInfo');
 const statusCursor = $('#statusCursor');
+
+/* === Common UI Controls === */
+function createPopupMenu({ containerEl, onClose }) {
+  let open = false;
+  function show(x, y) {
+    open = true;
+    containerEl.style.display = 'block';
+    containerEl.style.left = `${x}px`;
+    containerEl.style.top = `${y}px`;
+    requestAnimationFrame(() => {
+      const rect = containerEl.getBoundingClientRect();
+      if (rect.right > window.innerWidth) containerEl.style.left = `${window.innerWidth - rect.width - 4}px`;
+      if (rect.bottom > window.innerHeight) containerEl.style.top = `${window.innerHeight - rect.height - 4}px`;
+    });
+  }
+  function close() {
+    if (!open) return;
+    open = false;
+    containerEl.style.display = 'none';
+    if (onClose) onClose();
+  }
+  document.addEventListener('click', (e) => {
+    if (open && !containerEl.contains(e.target)) close();
+  });
+  return { show, close, isOpen: () => open };
+}
+
+function createModalDialog({ overlayEl, closeBtn, onOpen, onClose }) {
+  let open = false;
+  function doOpen() {
+    if (onOpen) onOpen();
+    open = true;
+    overlayEl.style.display = 'flex';
+  }
+  function doClose() {
+    if (!open) return;
+    open = false;
+    overlayEl.style.display = 'none';
+    if (onClose) onClose();
+  }
+  overlayEl.addEventListener('click', (e) => {
+    if (e.target === overlayEl) doClose();
+  });
+  if (closeBtn) closeBtn.addEventListener('click', doClose);
+  return { open: doOpen, close: doClose, isOpen: () => open };
+}
+
+function onOutsideClick({ el, ignoreEls = [], onClose }) {
+  document.addEventListener('click', (e) => {
+    if (el.contains(e.target)) return;
+    for (const ig of ignoreEls) { if (ig.contains(e.target) || ig === e.target) return; }
+    onClose(e);
+  });
+}
 
 /* === Init marked === */
 marked.setOptions({
@@ -366,12 +418,14 @@ function applyMarquee(rowEl) {
   if (!rowEl) return;
   const nameEl = rowEl.querySelector('.name');
   if (!nameEl) return;
-  // Check if text overflows
-  const overflow = nameEl.scrollWidth - nameEl.clientWidth;
-  if (overflow > 0) {
-    nameEl.style.setProperty('--overflow-px', overflow);
-    nameEl.classList.add('marquee');
-  }
+  // Wait for layout to compute before measuring
+  requestAnimationFrame(() => {
+    const overflow = nameEl.scrollWidth - nameEl.clientWidth;
+    if (overflow > 0) {
+      nameEl.style.setProperty('--overflow-px', overflow);
+      nameEl.classList.add('marquee');
+    }
+  });
 }
 
 function removeMarquee(rowEl) {
@@ -385,18 +439,20 @@ function removeMarquee(rowEl) {
 /* === Long-press for mobile context menu === */
 function initLongPress(rowEl, targetPath, type) {
   let startX, startY;
+  let timer = null;
+  let fired = false;
 
   rowEl.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     startX = touch.clientX;
     startY = touch.clientY;
-    longPressFired = false;
+    fired = false;
     rowEl.classList.add('long-press-holding');
 
-    longPressTimer = setTimeout(() => {
-      longPressFired = true;
+    timer = setTimeout(() => {
+      fired = true;
+      timer = null;
       rowEl.classList.remove('long-press-holding');
-      // Create a fake event with touch coordinates for showContextMenu
       showContextMenu({
         preventDefault() {},
         clientX: touch.clientX,
@@ -406,20 +462,20 @@ function initLongPress(rowEl, targetPath, type) {
   }, { passive: true });
 
   rowEl.addEventListener('touchmove', (e) => {
-    if (!longPressTimer) return;
+    if (!timer) return;
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - startX);
     const dy = Math.abs(touch.clientY - startY);
     if (dx > 10 || dy > 10) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
+      clearTimeout(timer);
+      timer = null;
       rowEl.classList.remove('long-press-holding');
     }
   }, { passive: true });
 
   const cancelPress = () => {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
+    clearTimeout(timer);
+    timer = null;
     rowEl.classList.remove('long-press-holding');
   };
   rowEl.addEventListener('touchend', cancelPress, { passive: true });
@@ -427,10 +483,10 @@ function initLongPress(rowEl, targetPath, type) {
 
   // Suppress click after long-press fires (prevents file from opening)
   rowEl.addEventListener('click', (e) => {
-    if (longPressFired) {
+    if (fired) {
       e.stopImmediatePropagation();
       e.preventDefault();
-      longPressFired = false;
+      fired = false;
     }
   }, true); // capture phase
 }
@@ -666,8 +722,10 @@ filterPresetBtn.addEventListener('click', (e) => {
   if (!isOpen) buildPresetMenu();
 });
 
-document.addEventListener('click', (e) => {
-  if (!filterPresetMenu.contains(e.target) && e.target !== filterPresetBtn) {
+onOutsideClick({
+  el: filterPresetMenu,
+  ignoreEls: [filterPresetBtn],
+  onClose() {
     filterPresetMenu.classList.remove('open');
     presetEditMode = false;
   }
@@ -892,24 +950,20 @@ async function openFile(filePath, rowEl) {
 let ctxTargetPath = null;
 let ctxTargetType = 'file'; // 'file' or 'dir'
 
+const ctxMenu = createPopupMenu({
+  containerEl: contextMenu,
+  onClose() { ctxTargetPath = null; }
+});
+
 function showContextMenu(e, targetPath, type = 'file') {
   e.preventDefault();
-  if (type !== 'file') return; // no context menu for directories
+  if (type !== 'file') return;
   ctxTargetPath = targetPath;
   ctxTargetType = type;
-  contextMenu.style.display = 'block';
-  contextMenu.style.left = `${e.clientX}px`;
-  contextMenu.style.top = `${e.clientY}px`;
-  // Keep in viewport
-  const rect = contextMenu.getBoundingClientRect();
-  if (rect.right > window.innerWidth) contextMenu.style.left = `${window.innerWidth - rect.width - 4}px`;
-  if (rect.bottom > window.innerHeight) contextMenu.style.top = `${window.innerHeight - rect.height - 4}px`;
+  ctxMenu.show(e.clientX, e.clientY);
 }
 
-function closeContextMenu() {
-  contextMenu.style.display = 'none';
-  ctxTargetPath = null;
-}
+function closeContextMenu() { ctxMenu.close(); }
 
 ctxDelete.addEventListener('click', async () => {
   const target = ctxTargetPath;
@@ -985,10 +1039,6 @@ ctxRename.addEventListener('click', async () => {
   } catch (err) {
     showToast('Rename failed: ' + err.message, 'error');
   }
-});
-
-document.addEventListener('click', (e) => {
-  if (!contextMenu.contains(e.target)) closeContextMenu();
 });
 
 /* ============================================================
@@ -1733,8 +1783,8 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (isSaveErrorBannerVisible()) { hideSaveErrorBanner(); return; }
-    if ($('#settingsOverlay')?.style.display !== 'none') { closeSettings(); return; }
-    if (shortcutsOverlay.style.display !== 'none') { closeShortcutsHelp(); return; }
+    if (settingsDialog.isOpen()) { settingsDialog.close(); return; }
+    if (shortcutsDialog.isOpen()) { shortcutsDialog.close(); return; }
     if (searchBar.style.display !== 'none') { closeContentSearch(); return; }
     if (isFocusMode) { toggleFocusMode(); return; }
     if (isEditing) { cancelEdit(); return; }
@@ -1881,18 +1931,13 @@ btnFocus.addEventListener('click', toggleFocusMode);
 /* ============================================================
    17.7. KEYBOARD SHORTCUTS HELP
    ============================================================ */
-function openShortcutsHelp() {
-  shortcutsOverlay.style.display = 'flex';
-}
-
-function closeShortcutsHelp() {
-  shortcutsOverlay.style.display = 'none';
-}
-
-shortcutsClose.addEventListener('click', closeShortcutsHelp);
-shortcutsOverlay.addEventListener('click', (e) => {
-  if (e.target === shortcutsOverlay) closeShortcutsHelp();
+const shortcutsDialog = createModalDialog({
+  overlayEl: shortcutsOverlay,
+  closeBtn: shortcutsClose,
 });
+
+function openShortcutsHelp() { shortcutsDialog.open(); }
+function closeShortcutsHelp() { shortcutsDialog.close(); }
 
 // beforeunload warning + draft flush
 window.addEventListener('beforeunload', (e) => {
@@ -2110,31 +2155,23 @@ const settingsOverlay = $('#settingsOverlay');
 const settingsClose = $('#settingsClose');
 const btnSettings = $('#btnSettings');
 
-function openSettings() {
-  // Sync current values into the dialog
-  const fontDisplay = $('#settingsFontSizeValue');
-  if (fontDisplay) fontDisplay.textContent = baseFontSize + 'px';
+const settingsDialog = createModalDialog({
+  overlayEl: settingsOverlay,
+  closeBtn: settingsClose,
+  onOpen() {
+    const fontDisplay = $('#settingsFontSizeValue');
+    if (fontDisplay) fontDisplay.textContent = baseFontSize + 'px';
+    const themeVal = $('#settingsThemeValue');
+    if (themeVal) themeVal.textContent = getTheme() === 'dark' ? 'Dark' : 'Light';
+    const wrapVal = $('#settingsWrapValue');
+    if (wrapVal) wrapVal.textContent = getWrapPref() ? 'ON' : 'OFF';
+  }
+});
 
-  const themeVal = $('#settingsThemeValue');
-  if (themeVal) themeVal.textContent = getTheme() === 'dark' ? 'Dark' : 'Light';
-
-  const wrapVal = $('#settingsWrapValue');
-  if (wrapVal) wrapVal.textContent = getWrapPref() ? 'ON' : 'OFF';
-
-  settingsOverlay.style.display = 'flex';
-}
-
-function closeSettings() {
-  settingsOverlay.style.display = 'none';
-}
+function openSettings() { settingsDialog.open(); }
+function closeSettings() { settingsDialog.close(); }
 
 if (btnSettings) btnSettings.addEventListener('click', openSettings);
-if (settingsClose) settingsClose.addEventListener('click', closeSettings);
-if (settingsOverlay) {
-  settingsOverlay.addEventListener('click', (e) => {
-    if (e.target === settingsOverlay) closeSettings();
-  });
-}
 
 // Font size +/-
 $('#settingsFontInc')?.addEventListener('click', () => {
