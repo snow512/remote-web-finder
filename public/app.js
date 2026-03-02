@@ -318,9 +318,19 @@ function renderTree(items, parentEl, depth) {
           showToast(`Moved: ${fileName} → ${item.name}/`, 'success');
           removeRecent(sourcePath);
           if (currentPath === sourcePath) {
-            currentPath = newPath;
+            if (isEditing && isDirty) {
+              clearDraft(sourcePath);
+              currentPath = newPath;
+              saveDraft();
+            } else {
+              clearDraft(sourcePath);
+              currentPath = newPath;
+            }
             renderBreadcrumb(newPath);
             addRecent(newPath);
+            const url = new URL(window.location);
+            url.searchParams.set('file', newPath);
+            history.replaceState(null, '', url);
           }
           await loadTree();
           if (currentPath === newPath) {
@@ -976,7 +986,19 @@ ctxDelete.addEventListener('click', async () => {
     removeRecent(target);
     clearDraft(target);
     if (currentPath === target) {
+      // Clean up editing state
+      if (isEditing) {
+        isEditing = false;
+        if (saveController) saveController.abort();
+      }
       stopDraftTimer();
+      contentBody.classList.remove('split-mode');
+      editorPanel.style.display = 'none';
+      livePreviewEl.style.display = 'none';
+      mdToolbar.style.display = 'none';
+      closeContentSearch();
+      hideSaveErrorBanner();
+      hideTOC();
       currentPath = null;
       setDirty(false);
       toolbarEl.style.display = 'none';
@@ -984,7 +1006,6 @@ ctxDelete.addEventListener('click', async () => {
       previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
       document.title = BASE_TITLE;
       statusBar.style.display = 'none';
-      // Clean up URL ?file= parameter
       const url = new URL(window.location);
       url.searchParams.delete('file');
       history.replaceState(null, '', url);
@@ -1031,7 +1052,7 @@ ctxRename.addEventListener('click', async () => {
     await loadTree();
     if (currentPath === newPath) {
       const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
-      if (row) row.classList.add('active');
+      if (row) { row.classList.add('active'); applyMarquee(row); }
       expandPathTo(newPath);
     }
   } catch (err) {
