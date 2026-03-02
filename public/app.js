@@ -861,7 +861,7 @@ function setDirty(dirty) {
    7. FILE OPERATIONS
    ============================================================ */
 async function openFile(filePath, rowEl) {
-  if (isDirty && currentPath !== filePath) {
+  if (isDirty) {
     if (!confirm('Discard unsaved changes?')) return;
   }
 
