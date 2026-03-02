@@ -207,12 +207,13 @@ Usage:
 Options:
   -d, --dir <path>    Directory to serve (default: .)
   -p, --port <number> Port number (default: 5999)
-  --ignore <file>     Custom ignore file (default: .rwfignore)
-  --open              Open browser automatically
   -b, --bg            Run in background (daemon mode)
-  --shutdown          Stop existing remote-web-finder on the same port
   -h, --help          Show this help
   -v, --version       Show version
+
+Ignore files:
+  Place a .rwfignore file in the served directory to customize
+  which files are hidden. Falls back to the built-in default.
 `);
     process.exit(0);
   }
@@ -225,25 +226,6 @@ Options:
   }
 
   const PORT = parseInt(getArg(['-p', '--port'], '5999'), 10);
-
-  // --shutdown: kill existing process on the same port
-  if (hasFlag('--shutdown')) {
-    const { execSync } = require('child_process');
-    try {
-      const pid = execSync(`lsof -ti:${PORT}`, { encoding: 'utf-8' }).trim();
-      if (pid) {
-        pid.split('\n').forEach(p => {
-          try { process.kill(parseInt(p), 'SIGTERM'); } catch {}
-        });
-        console.log(`Stopped process on port ${PORT} (PID: ${pid.replace(/\n/g, ', ')})`);
-      } else {
-        console.log(`No process found on port ${PORT}`);
-      }
-    } catch {
-      console.log(`No process found on port ${PORT}`);
-    }
-    process.exit(0);
-  }
 
   // --bg: re-spawn as detached background process
   if (hasFlag(['-b', '--bg']) && !process.env.__RWF_BG) {
@@ -258,7 +240,7 @@ Options:
     const dir = path.resolve(getArg(['-d', '--dir'], '.'));
     console.log(`Remote Web Finder started in background (PID: ${child.pid})`);
     console.log(`  http://localhost:${PORT}  →  ${dir}`);
-    console.log(`  Stop: remote-web-finder --shutdown -p ${PORT}`);
+    console.log(`  Stop: kill ${child.pid}`);
     process.exit(0);
   }
 
@@ -269,15 +251,12 @@ Options:
     process.exit(1);
   }
 
-  // --- ignore file loading ---
+  // --- ignore file loading (CoC: .rwfignore in DOCS_DIR > built-in default) ---
   function loadIgnorePatterns() {
-    const customIgnore = getArg('--ignore', null);
-    const defaultIgnore = path.join(__dirname, '.rwfignore');
-
-    // Priority: --ignore file > .rwfignore in DOCS_DIR > default (package built-in)
-    const candidates = customIgnore
-      ? [path.resolve(customIgnore)]
-      : [path.join(DOCS_DIR, '.rwfignore'), defaultIgnore];
+    const candidates = [
+      path.join(DOCS_DIR, '.rwfignore'),
+      path.join(__dirname, '.rwfignore'),
+    ];
 
     for (const filePath of candidates) {
       if (fs.existsSync(filePath)) {
@@ -301,15 +280,5 @@ Options:
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Remote Web Finder running at http://localhost:${PORT}`);
     console.log(`Serving docs from: ${DOCS_DIR}`);
-
-    // --open: open browser
-    if (hasFlag('--open')) {
-      const url = `http://localhost:${PORT}`;
-      const { exec } = require('child_process');
-      const cmd = process.platform === 'darwin' ? `open ${url}`
-        : process.platform === 'win32' ? `start ${url}`
-        : `xdg-open ${url}`;
-      exec(cmd);
-    }
   });
 }
