@@ -794,7 +794,7 @@ function buildPresetMenu() {
 
   if (presetEditMode) {
     const addBtn = document.createElement('button');
-    addBtn.className = 'preset-footer-btn';
+    addBtn.className = 'btn-sm';
     addBtn.textContent = '+ Add';
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -804,7 +804,7 @@ function buildPresetMenu() {
     });
 
     const resetBtn = document.createElement('button');
-    resetBtn.className = 'preset-footer-btn';
+    resetBtn.className = 'btn-sm';
     resetBtn.textContent = 'Reset';
     resetBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -817,7 +817,7 @@ function buildPresetMenu() {
     });
 
     const doneBtn = document.createElement('button');
-    doneBtn.className = 'preset-footer-btn accent';
+    doneBtn.className = 'btn-sm accent';
     doneBtn.textContent = 'Done';
     doneBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -830,7 +830,7 @@ function buildPresetMenu() {
     footer.appendChild(doneBtn);
   } else {
     const editBtn = document.createElement('button');
-    editBtn.className = 'preset-footer-btn';
+    editBtn.className = 'btn-sm';
     editBtn.textContent = 'Edit';
     editBtn.addEventListener('click', (e) => {
       e.stopPropagation();
