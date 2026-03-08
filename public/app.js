@@ -204,7 +204,7 @@ function airAlert(title, message) {
     airPopupInput.style.display = 'none';
     airPopupCancel.style.display = 'none';
     airPopupOk.textContent = 'OK';
-    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOk.className = 'dialog-btn ok';
     airPopupOverlay.style.display = 'flex';
     const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
     airPopupOk.onclick = done;
@@ -219,10 +219,10 @@ function airError(title, errorMsg) {
     airPopupTitle.textContent = title;
     airPopupBody.innerHTML = '';
     const msgEl = document.createElement('div');
-    msgEl.className = 'air-popup-error-msg';
+    msgEl.className = 'dialog-error-msg';
     msgEl.textContent = errorMsg || '';
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'air-popup-copy-btn';
+    copyBtn.className = 'dialog-copy-btn';
     copyBtn.textContent = 'Copy';
     copyBtn.onclick = () => {
       const text = errorMsg || '';
@@ -241,7 +241,7 @@ function airError(title, errorMsg) {
     airPopupInput.style.display = 'none';
     airPopupCancel.style.display = 'none';
     airPopupOk.textContent = 'OK';
-    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOk.className = 'dialog-btn ok';
     airPopupOverlay.style.display = 'flex';
     const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
     airPopupOk.onclick = done;
@@ -259,7 +259,7 @@ function airConfirm(title, { okText = 'OK', danger = false } = {}) {
     airPopupCancel.style.display = '';
     airPopupCancel.textContent = 'Cancel';
     airPopupOk.textContent = okText;
-    airPopupOk.className = 'air-popup-btn ok' + (danger ? ' danger' : '');
+    airPopupOk.className = 'dialog-btn ok' + (danger ? ' danger' : '');
     airPopupOverlay.style.display = 'flex';
     const done = (v) => { airPopupOverlay.style.display = 'none'; resolve(v); };
     airPopupOk.onclick = () => done(true);
@@ -278,7 +278,7 @@ function airPrompt(title, defaultValue = '') {
     airPopupCancel.style.display = '';
     airPopupCancel.textContent = 'Cancel';
     airPopupOk.textContent = 'OK';
-    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOk.className = 'dialog-btn ok';
     airPopupOverlay.style.display = 'flex';
     airPopupInput.focus();
     airPopupInput.select();

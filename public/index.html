@@ -133,26 +133,23 @@
   </div>
 
   <!-- Air Popup (common dialog) -->
-  <div class="air-popup-overlay" id="airPopupOverlay" style="display:none">
-    <div class="air-popup">
-      <div class="air-popup-title" id="airPopupTitle"></div>
-      <div class="air-popup-body" id="airPopupBody"></div>
-      <input type="text" class="air-popup-input" id="airPopupInput" style="display:none">
-      <div class="air-popup-actions">
-        <button class="air-popup-btn cancel" id="airPopupCancel">Cancel</button>
-        <button class="air-popup-btn ok" id="airPopupOk">OK</button>
+  <div class="overlay" id="airPopupOverlay" style="display:none">
+    <div class="dialog dialog-sm">
+      <div class="dialog-header" id="airPopupTitle"></div>
+      <div class="dialog-body" id="airPopupBody"></div>
+      <input type="text" class="dialog-input" id="airPopupInput" style="display:none">
+      <div class="dialog-actions">
+        <button class="dialog-btn cancel" id="airPopupCancel">Cancel</button>
+        <button class="dialog-btn ok" id="airPopupOk">OK</button>
       </div>
     </div>
   </div>
 
   <!-- Keyboard shortcuts help -->
-  <div class="shortcuts-overlay" id="shortcutsOverlay" style="display:none">
-    <div class="shortcuts-dialog">
-      <div class="shortcuts-header">
-        <h3>Keyboard Shortcuts</h3>
-        <button class="search-close" id="shortcutsClose">&times;</button>
-      </div>
-      <div class="shortcuts-body">
+  <div class="overlay" id="shortcutsOverlay" style="display:none">
+    <div class="dialog dialog-md">
+      <div class="dialog-header"><h3>Keyboard Shortcuts</h3><button class="dialog-close" id="shortcutsClose">&times;</button></div>
+      <div class="dialog-body dialog-body-scroll">
         <div class="shortcut-group">
           <div class="shortcut-group-title">Navigation</div>
           <div class="shortcut-row"><kbd>Ctrl+P</kbd><span>Filter files</span></div>
@@ -181,13 +178,10 @@
   </div>
 
   <!-- Settings dialog -->
-  <div class="settings-overlay" id="settingsOverlay" style="display:none">
-    <div class="settings-dialog">
-      <div class="settings-header">
-        <h3>Settings</h3>
-        <button class="search-close" id="settingsClose">&times;</button>
-      </div>
-      <div class="settings-body">
+  <div class="overlay" id="settingsOverlay" style="display:none">
+    <div class="dialog dialog-md">
+      <div class="dialog-header"><h3>Settings</h3><button class="dialog-close" id="settingsClose">&times;</button></div>
+      <div class="dialog-body dialog-body-scroll">
         <div class="settings-section-title">Appearance</div>
         <div class="settings-row">
           <span class="settings-row-label">Font Size</span>
@@ -211,7 +205,6 @@
             <button class="settings-btn" id="settingsWrapToggle">Toggle</button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
