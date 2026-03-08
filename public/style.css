@@ -840,28 +840,27 @@ mark.search-hl.active {
 .btn:hover { background: var(--bg-hover); }
 
 .btn-edit {
-  border-color: var(--accent);
   color: var(--accent);
+  border-color: var(--accent);
 }
-
 .btn-edit:hover {
   background: var(--accent);
   color: #fff;
 }
 
 .btn-save {
-  background: var(--btn-save);
+  color: var(--btn-save);
   border-color: var(--btn-save);
+}
+.btn-save:hover {
+  background: var(--btn-save);
   color: #fff;
 }
 
-.btn-save:hover { background: var(--btn-save-hover); }
-
 .btn-cancel {
-  border-color: var(--btn-cancel);
   color: var(--btn-cancel);
+  border-color: var(--btn-cancel);
 }
-
 .btn-cancel:hover {
   background: var(--btn-cancel);
   color: #fff;
