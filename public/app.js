@@ -74,6 +74,22 @@ async function throwIfNotOk(res) {
   throw new Error(msg);
 }
 
+async function refreshTreeAndSelect(filePath) {
+  await loadTree();
+  if (filePath) {
+    expandPathTo(filePath);
+    setTreeItemActive(getTreeRow(filePath));
+  }
+}
+async function expandAndOpenFile(filePath, enterEdit = false) {
+  expandPathTo(filePath);
+  const row = getTreeRow(filePath);
+  if (row) {
+    await openFile(filePath, row);
+    if (enterEdit) enterEditMode();
+  }
+}
+
 /* === API URL Builders === */
 const API = {
   file: (p) => `/api/file?path=${encodeURIComponent(p)}`,
@@ -488,11 +504,7 @@ function renderTree(items, parentEl, depth) {
             addRecent(newPath);
             updateFileUrl(newPath);
           }
-          await loadTree();
-          if (currentPath === newPath) {
-            expandPathTo(newPath);
-            setTreeItemActive(getTreeRow(newPath));
-          }
+          await refreshTreeAndSelect(currentPath === newPath ? newPath : null);
         } catch (err) {
           airError('Move failed', err.message);
         }
@@ -1208,14 +1220,9 @@ ctxRename.addEventListener('click', async () => {
     if (type === 'file') {
       removeRecent(target);
       if (currentPath === target) {
-        if (isEditing && isDirty) {
-          clearDraft(target);
-          currentPath = newPath;
-          saveDraft();
-        } else {
-          clearDraft(target);
-          currentPath = newPath;
-        }
+        clearDraft(target);
+        currentPath = newPath;
+        if (isEditing && isDirty) saveDraft();
         renderBreadcrumb(newPath);
         addRecent(newPath);
         updateFileUrl(newPath);
@@ -1230,11 +1237,7 @@ ctxRename.addEventListener('click', async () => {
       updateFileUrl(updatedPath);
     }
 
-    await loadTree();
-    if (currentPath) {
-      setTreeItemActive(getTreeRow(currentPath));
-      expandPathTo(currentPath);
-    }
+    await refreshTreeAndSelect(currentPath);
   } catch (err) {
     airError('Rename failed', err.message);
   }
@@ -1267,9 +1270,7 @@ ctxCopy.addEventListener('click', async () => {
     await throwIfNotOk(createRes);
     showToast(`Copied: ${newName}`, 'success');
     await loadTree();
-    expandPathTo(newPath);
-    const row = getTreeRow(newPath);
-    if (row) openFile(newPath, row);
+    await expandAndOpenFile(newPath);
   } catch (err) {
     airError('Copy failed', err.message);
   }
@@ -1293,12 +1294,7 @@ ctxNewFile.addEventListener('click', async () => {
     await throwIfNotOk(res);
     showToast(`Created: ${fileName}`, 'success');
     await loadTree();
-    expandPathTo(newPath);
-    const row = getTreeRow(newPath);
-    if (row) {
-      await openFile(newPath, row);
-      enterEditMode();
-    }
+    await expandAndOpenFile(newPath, true);
   } catch (err) {
     airError('Create failed', err.message);
   }

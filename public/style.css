@@ -28,6 +28,9 @@
   --line-num-bg: #161b22;
   --line-num-color: #484f58;
   --line-num-border: #21262d;
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.3);
 }
 
 /* === Light Theme === */
@@ -55,6 +58,9 @@
   --line-num-bg: #f6f8fa;
   --line-num-color: #8c959f;
   --line-num-border: #d8dee4;
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.15);
 }
 
 html, body {
@@ -304,7 +310,7 @@ html, body {
   background: var(--bg-sidebar);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-sm);
   z-index: 100;
   max-height: 360px;
   overflow-y: auto;
@@ -593,7 +599,7 @@ html, body {
   background: var(--bg-sidebar);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-md);
   padding: 4px 0;
   min-width: 140px;
 }
@@ -1142,7 +1148,7 @@ mark.search-hl.active {
   border-radius: 8px;
   font-size: 14px;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-sm);
   animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
   max-width: 360px;
 }
@@ -1183,7 +1189,7 @@ mark.search-hl.active {
   background: var(--bg-sidebar);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
   max-width: 90vw;
   animation: dialogSlideIn 0.15s ease;
 }
