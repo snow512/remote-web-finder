@@ -132,6 +132,16 @@ html, body {
   color: var(--text);
 }
 
+/* === Icon Container (common utility) === */
+.recent-item .icon,
+.tree-item .icon {
+  margin-right: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* === Input Base (common utility) === */
 .search-input,
 .search-bar input,
@@ -465,14 +475,9 @@ html, body {
 /* .recent-item .name → text-truncate via common selector */
 
 .recent-item .icon {
-  margin-right: 6px;
   font-size: 12px;
-  flex-shrink: 0;
   width: 16px;
   height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .icon svg {
@@ -517,14 +522,9 @@ html, body {
 .tree-dir.hidden { display: none; }
 
 .tree-item .icon {
-  margin-right: 6px;
   font-size: 13px;
-  flex-shrink: 0;
   width: 18px;
   height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .tree-item .name {
@@ -1566,13 +1566,11 @@ mark.search-hl.active {
   align-items: center;
   padding: 24px;
   gap: 16px;
+  overflow: auto;
 }
 .image-preview .image-name {
   color: var(--text-muted);
   font-size: 13px;
-}
-.image-preview {
-  overflow: auto;
 }
 .image-preview img {
   max-width: 100%;

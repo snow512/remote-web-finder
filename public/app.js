@@ -50,6 +50,22 @@ function updateFileUrl(filePath, push = false) {
   else url.searchParams.delete('file');
   history[push ? 'pushState' : 'replaceState'](filePath ? { file: filePath } : null, '', url);
 }
+function setTreeItemActive(rowEl) {
+  treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
+  if (rowEl) { rowEl.classList.add('active'); applyMarquee(rowEl); }
+}
+function setEditButtons(editing) {
+  btnEdit.style.display = editing ? 'none' : 'inline-block';
+  btnSave.style.display = editing ? 'inline-block' : 'none';
+  btnCancel.style.display = editing ? 'inline-block' : 'none';
+}
+async function throwIfNotOk(res) {
+  if (res.ok) return;
+  const body = await res.text();
+  let msg;
+  try { msg = JSON.parse(body).error; } catch { msg = body || res.statusText; }
+  throw new Error(msg);
+}
 
 /* === API URL Builders === */
 const API = {
@@ -406,10 +422,7 @@ async function loadTree() {
   focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
   // Restore active highlight for current file
-  if (currentPath) {
-    const activeRow = getTreeRow(currentPath);
-    if (activeRow) { activeRow.classList.add('active'); applyMarquee(activeRow); }
-  }
+  if (currentPath) setTreeItemActive(getTreeRow(currentPath));
   renderRecent();
   // Reapply active filter after tree rebuild
   applyFilter();
@@ -452,7 +465,7 @@ function renderTree(items, parentEl, depth) {
         if (sourcePath === newPath) return;
         try {
           const res = await fetch(API.rename(sourcePath, newPath), { method: 'PATCH' });
-          if (!res.ok) throw new Error((await res.json()).error);
+          await throwIfNotOk(res);
           showToast(`Moved: ${fileName} → ${item.name}/`, 'success');
           removeRecent(sourcePath);
           if (currentPath === sourcePath) {
@@ -471,8 +484,7 @@ function renderTree(items, parentEl, depth) {
           await loadTree();
           if (currentPath === newPath) {
             expandPathTo(newPath);
-            const newRow = getTreeRow(newPath);
-            if (newRow) { newRow.classList.add('active'); applyMarquee(newRow); }
+            setTreeItemActive(getTreeRow(newPath));
           }
         } catch (err) {
           airError('Move failed', err.message);
@@ -1020,8 +1032,7 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
   stopDraftTimer();
   clearTimeout(livePreviewTimer);
 
-  treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
-  if (rowEl) { rowEl.classList.add('active'); applyMarquee(rowEl); }
+  setTreeItemActive(rowEl);
 
   expandPathTo(filePath);
 
@@ -1141,7 +1152,7 @@ function showWelcomeScreen() {
   closeContentSearch();
   hideSaveErrorBanner();
   hideTOC();
-  treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
+  setTreeItemActive(null);
   currentPath = null;
   setDirty(false);
   toolbarEl.style.display = 'none';
@@ -1159,7 +1170,7 @@ ctxDelete.addEventListener('click', async () => {
 
   try {
     const res = await fetch(API.file(target), { method: 'DELETE' });
-    if (!res.ok) throw new Error((await res.json()).error);
+    await throwIfNotOk(res);
     showToast(`Deleted: ${target}`, 'success');
     removeRecent(target);
     clearDraft(target);
@@ -1187,12 +1198,7 @@ ctxRename.addEventListener('click', async () => {
   const newPath = dirPart + newName;
   try {
     const res = await fetch(API.rename(target, newPath), { method: 'PATCH' });
-    if (!res.ok) {
-      const body = await res.text();
-      let msg;
-      try { msg = JSON.parse(body).error; } catch { msg = body || res.statusText; }
-      throw new Error(msg);
-    }
+    await throwIfNotOk(res);
     showToast(`Renamed: ${name} → ${newName}`, 'success');
 
     if (type === 'file') {
@@ -1222,8 +1228,7 @@ ctxRename.addEventListener('click', async () => {
 
     await loadTree();
     if (currentPath) {
-      const row = getTreeRow(currentPath);
-      if (row) { row.classList.add('active'); applyMarquee(row); }
+      setTreeItemActive(getTreeRow(currentPath));
       expandPathTo(currentPath);
     }
   } catch (err) {
@@ -1248,14 +1253,14 @@ ctxCopy.addEventListener('click', async () => {
   try {
     // Read source, then create copy
     const srcRes = await fetch(API.file(target));
-    if (!srcRes.ok) throw new Error('Source not found');
+    await throwIfNotOk(srcRes);
     const content = await srcRes.text();
     const createRes = await fetch(API.file(newPath), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: content
     });
-    if (!createRes.ok) throw new Error((await createRes.json()).error);
+    await throwIfNotOk(createRes);
     showToast(`Copied: ${newName}`, 'success');
     await loadTree();
     expandPathTo(newPath);
@@ -1281,7 +1286,7 @@ ctxNewFile.addEventListener('click', async () => {
       headers: { 'Content-Type': 'text/plain' },
       body: ''
     });
-    if (!res.ok) throw new Error((await res.json()).error);
+    await throwIfNotOk(res);
     showToast(`Created: ${fileName}`, 'success');
     await loadTree();
     expandPathTo(newPath);
@@ -1306,7 +1311,7 @@ ctxNewFolder.addEventListener('click', async () => {
   const newPath = dirPath + '/' + folderName;
   try {
     const res = await fetch(API.folder(newPath), { method: 'POST' });
-    if (!res.ok) throw new Error((await res.json()).error);
+    await throwIfNotOk(res);
     showToast(`Created folder: ${folderName}`, 'success');
     await loadTree();
     expandPathTo(newPath + '/dummy');
@@ -1360,9 +1365,7 @@ function showPreview(text, filePath) {
   livePreviewEl.style.display = 'none';
   previewEl.style.display = 'block';
   mdToolbar.style.display = 'none';
-  btnEdit.style.display = 'inline-block';
-  btnSave.style.display = 'none';
-  btnCancel.style.display = 'none';
+  setEditButtons(false);
 
   if (filePath && filePath.endsWith('.md')) {
     previewEl.innerHTML = marked.parse(text);
@@ -1463,9 +1466,7 @@ function showPreviewMode() {
   livePreviewEl.style.display = 'none';
   previewEl.style.display = 'block';
   mdToolbar.style.display = 'none';
-  btnEdit.style.display = 'inline-block';
-  btnSave.style.display = 'none';
-  btnCancel.style.display = 'none';
+  setEditButtons(false);
 }
 
 /* ============================================================
@@ -1556,9 +1557,7 @@ function enterEditMode() {
   editorEl.value = originalContent;
   updateLineNumbers();
   setDirty(false);
-  btnEdit.style.display = 'none';
-  btnSave.style.display = 'inline-block';
-  btnCancel.style.display = 'inline-block';
+  setEditButtons(true);
 
   // Show markdown toolbar for .md files
   if (currentPath && currentPath.endsWith('.md')) {
@@ -1666,7 +1665,7 @@ async function saveFile() {
       body: content,
       signal: saveController.signal,
     });
-    if (!res.ok) throw new Error(await res.text());
+    await throwIfNotOk(res);
     originalContent = content;
     setDirty(false);
     clearDraft(currentPath);
