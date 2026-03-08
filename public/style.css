@@ -478,6 +478,13 @@ html, body {
 
 /* .recent-item:hover → hover-highlight via common selector */
 
+.recent-empty {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* .recent-item .name → text-truncate via common selector */
 
 .recent-item .icon {

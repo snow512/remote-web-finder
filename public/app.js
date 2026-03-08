@@ -410,12 +410,12 @@ function removeRecent(filePath) {
 
 function renderRecent() {
   const list = getRecent();
+  recentListEl.innerHTML = '';
+  recentClearBtn.style.display = list.length ? '' : 'none';
   if (list.length === 0) {
-    recentFilesEl.style.display = 'none';
+    recentListEl.innerHTML = '<div class="recent-empty">No recent files</div>';
     return;
   }
-  recentFilesEl.style.display = 'block';
-  recentListEl.innerHTML = '';
   list.forEach(p => {
     const item = document.createElement('div');
     item.className = 'recent-item';
