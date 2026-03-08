@@ -40,6 +40,25 @@ function getFileName(p) { return p ? p.split('/').pop() : ''; }
 function getDirPath(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : ''; }
 function getDirName(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : ''; }
 
+/* === DOM Helpers === */
+function getTreeRow(filePath) {
+  return treeEl.querySelector(`[data-path="${CSS.escape(filePath)}"]`);
+}
+function updateFileUrl(filePath, push = false) {
+  const url = new URL(window.location);
+  if (filePath) url.searchParams.set('file', filePath);
+  else url.searchParams.delete('file');
+  history[push ? 'pushState' : 'replaceState'](filePath ? { file: filePath } : null, '', url);
+}
+
+/* === API URL Builders === */
+const API = {
+  file: (p) => `/api/file?path=${encodeURIComponent(p)}`,
+  raw: (p) => `/api/raw?path=${encodeURIComponent(p)}`,
+  folder: (p) => `/api/folder?path=${encodeURIComponent(p)}`,
+  rename: (oldP, newP) => `/api/rename?path=${encodeURIComponent(oldP)}&newPath=${encodeURIComponent(newP)}`,
+};
+
 /* === DOM === */
 const $ = (sel) => document.querySelector(sel);
 const treeEl = $('#tree');
@@ -364,7 +383,7 @@ function renderRecent() {
     const name = getFileName(p);
     item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
     item.addEventListener('click', () => {
-      const row = treeEl.querySelector(`[data-path="${CSS.escape(p)}"]`);
+      const row = getTreeRow(p);
       openFile(p, row);
     });
     recentListEl.appendChild(item);
@@ -388,7 +407,7 @@ async function loadTree() {
   renderTree(treeData, treeEl, 0);
   // Restore active highlight for current file
   if (currentPath) {
-    const activeRow = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
+    const activeRow = getTreeRow(currentPath);
     if (activeRow) { activeRow.classList.add('active'); applyMarquee(activeRow); }
   }
   renderRecent();
@@ -432,7 +451,7 @@ function renderTree(items, parentEl, depth) {
         const newPath = item.path + '/' + fileName;
         if (sourcePath === newPath) return;
         try {
-          const res = await fetch(`/api/rename?path=${encodeURIComponent(sourcePath)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
+          const res = await fetch(API.rename(sourcePath, newPath), { method: 'PATCH' });
           if (!res.ok) throw new Error((await res.json()).error);
           showToast(`Moved: ${fileName} → ${item.name}/`, 'success');
           removeRecent(sourcePath);
@@ -447,14 +466,12 @@ function renderTree(items, parentEl, depth) {
             }
             renderBreadcrumb(newPath);
             addRecent(newPath);
-            const url = new URL(window.location);
-            url.searchParams.set('file', newPath);
-            history.replaceState(null, '', url);
+            updateFileUrl(newPath);
           }
           await loadTree();
           if (currentPath === newPath) {
             expandPathTo(newPath);
-            const newRow = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+            const newRow = getTreeRow(newPath);
             if (newRow) { newRow.classList.add('active'); applyMarquee(newRow); }
           }
         } catch (err) {
@@ -1015,10 +1032,8 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
   toolbarEl.classList.add('has-file');
 
   // Update URL for sharing / history navigation
-  const url = new URL(window.location);
-  url.searchParams.set('file', filePath);
   if (pushHistory) {
-    history.pushState({ file: filePath }, '', url);
+    updateFileUrl(filePath, true);
   }
 
   closeSidebar();
@@ -1040,7 +1055,7 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
   }
 
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(filePath)}`, { signal });
+    const res = await fetch(API.file(filePath), { signal });
     if (!res.ok) {
       if (res.status === 404) {
         removeRecent(filePath);
@@ -1143,16 +1158,14 @@ ctxDelete.addEventListener('click', async () => {
   if (!(await airConfirm(`Delete "${target}"?`, { okText: 'Delete', danger: true }))) return;
 
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(target)}`, { method: 'DELETE' });
+    const res = await fetch(API.file(target), { method: 'DELETE' });
     if (!res.ok) throw new Error((await res.json()).error);
     showToast(`Deleted: ${target}`, 'success');
     removeRecent(target);
     clearDraft(target);
     if (currentPath === target) {
       showWelcomeScreen();
-      const url = new URL(window.location);
-      url.searchParams.delete('file');
-      history.replaceState(null, '', url);
+      updateFileUrl(null);
     }
     await loadTree();
   } catch (err) {
@@ -1173,7 +1186,7 @@ ctxRename.addEventListener('click', async () => {
 
   const newPath = dirPart + newName;
   try {
-    const res = await fetch(`/api/rename?path=${encodeURIComponent(target)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
+    const res = await fetch(API.rename(target, newPath), { method: 'PATCH' });
     if (!res.ok) {
       const body = await res.text();
       let msg;
@@ -1195,9 +1208,7 @@ ctxRename.addEventListener('click', async () => {
         }
         renderBreadcrumb(newPath);
         addRecent(newPath);
-        const url = new URL(window.location);
-        url.searchParams.set('file', newPath);
-        history.replaceState(null, '', url);
+        updateFileUrl(newPath);
       }
     } else if (type === 'dir' && currentPath && currentPath.startsWith(target + '/')) {
       // Current file is inside renamed directory — update path
@@ -1206,14 +1217,12 @@ ctxRename.addEventListener('click', async () => {
       currentPath = updatedPath;
       if (isEditing && isDirty) saveDraft();
       renderBreadcrumb(updatedPath);
-      const url = new URL(window.location);
-      url.searchParams.set('file', updatedPath);
-      history.replaceState(null, '', url);
+      updateFileUrl(updatedPath);
     }
 
     await loadTree();
     if (currentPath) {
-      const row = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
+      const row = getTreeRow(currentPath);
       if (row) { row.classList.add('active'); applyMarquee(row); }
       expandPathTo(currentPath);
     }
@@ -1238,10 +1247,10 @@ ctxCopy.addEventListener('click', async () => {
   const newPath = dirPart + newName;
   try {
     // Read source, then create copy
-    const srcRes = await fetch(`/api/file?path=${encodeURIComponent(target)}`);
+    const srcRes = await fetch(API.file(target));
     if (!srcRes.ok) throw new Error('Source not found');
     const content = await srcRes.text();
-    const createRes = await fetch(`/api/file?path=${encodeURIComponent(newPath)}`, {
+    const createRes = await fetch(API.file(newPath), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: content
@@ -1250,7 +1259,7 @@ ctxCopy.addEventListener('click', async () => {
     showToast(`Copied: ${newName}`, 'success');
     await loadTree();
     expandPathTo(newPath);
-    const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+    const row = getTreeRow(newPath);
     if (row) openFile(newPath, row);
   } catch (err) {
     airError('Copy failed', err.message);
@@ -1267,7 +1276,7 @@ ctxNewFile.addEventListener('click', async () => {
 
   const newPath = dirPath + '/' + fileName;
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(newPath)}`, {
+    const res = await fetch(API.file(newPath), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: ''
@@ -1276,7 +1285,7 @@ ctxNewFile.addEventListener('click', async () => {
     showToast(`Created: ${fileName}`, 'success');
     await loadTree();
     expandPathTo(newPath);
-    const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+    const row = getTreeRow(newPath);
     if (row) {
       await openFile(newPath, row);
       enterEditMode();
@@ -1296,7 +1305,7 @@ ctxNewFolder.addEventListener('click', async () => {
 
   const newPath = dirPath + '/' + folderName;
   try {
-    const res = await fetch(`/api/folder?path=${encodeURIComponent(newPath)}`, { method: 'POST' });
+    const res = await fetch(API.folder(newPath), { method: 'POST' });
     if (!res.ok) throw new Error((await res.json()).error);
     showToast(`Created folder: ${folderName}`, 'success');
     await loadTree();
@@ -1322,7 +1331,7 @@ function showImagePreview(filePath) {
   btnCancel.style.display = 'none';
   hideTOC();
 
-  const src = `/api/raw?path=${encodeURIComponent(filePath)}`;
+  const src = API.raw(filePath);
   const name = getFileName(filePath);
   previewEl.innerHTML = `<div class="image-preview"><p class="image-name">${esc(name)}</p><img src="${src}" alt="${esc(name)}" /></div>`;
   const img = previewEl.querySelector('img');
@@ -1439,7 +1448,7 @@ previewEl.addEventListener('click', (e) => {
   // Clean up
   targetPath = targetPath.replace(/\/+/g, '/').replace(/^\//, '');
 
-  const row = treeEl.querySelector(`[data-path="${CSS.escape(targetPath)}"]`);
+  const row = getTreeRow(targetPath);
   if (row) {
     openFile(targetPath, row);
   } else {
@@ -1651,7 +1660,7 @@ async function saveFile() {
   saveErrorRetry.textContent = 'Saving...';
   const content = editorEl.value;
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(currentPath)}`, {
+    const res = await fetch(API.file(currentPath), {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain' },
       body: content,
@@ -2497,7 +2506,7 @@ const urlFileParam = new URLSearchParams(window.location.search).get('file');
 history.replaceState({ file: urlFileParam || null }, '');
 
 if (urlFileParam) {
-  const row = treeEl.querySelector(`[data-path="${CSS.escape(urlFileParam)}"]`);
+  const row = getTreeRow(urlFileParam);
   if (row) row.scrollIntoView({ block: 'nearest' });
   openFile(urlFileParam, row);
 }
@@ -2506,14 +2515,12 @@ if (urlFileParam) {
 window.addEventListener('popstate', async (e) => {
   const filePath = e.state?.file || new URLSearchParams(window.location.search).get('file');
   if (filePath) {
-    const row = treeEl.querySelector(`[data-path="${CSS.escape(filePath)}"]`);
+    const row = getTreeRow(filePath);
     // Use openFile but prevent it from pushing another history entry
     if (isDirty) {
       if (!(await airConfirm('Discard unsaved changes?'))) {
         // Re-push current state to cancel back
-        const url = new URL(window.location);
-        url.searchParams.set('file', currentPath);
-        history.pushState({ file: currentPath }, '', url);
+        updateFileUrl(currentPath, true);
         return;
       }
     }
@@ -2522,9 +2529,7 @@ window.addEventListener('popstate', async (e) => {
   } else {
     if (isDirty) {
       if (!(await airConfirm('Discard unsaved changes?'))) {
-        const url = new URL(window.location);
-        url.searchParams.set('file', currentPath);
-        history.pushState({ file: currentPath }, '', url);
+        updateFileUrl(currentPath, true);
         return;
       }
     }

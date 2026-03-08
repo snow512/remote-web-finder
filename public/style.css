@@ -122,6 +122,25 @@ html, body {
   white-space: nowrap;
 }
 
+/* === Hover Highlight (common utility) === */
+.btn-sm:hover,
+.filter-preset-btn:hover,
+.recent-item:hover,
+.tree-item:hover,
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* === Input Base (common utility) === */
+.search-input,
+.search-bar input,
+.dialog-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
 /* === Input Focus (common utility) === */
 .search-input:focus,
 .preset-edit-input:focus,
@@ -155,10 +174,7 @@ html, body {
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 
-.btn-sm:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .btn-sm:hover → hover-highlight via common selector */
 
 .btn-sm:disabled {
   opacity: 0.4;
@@ -209,10 +225,7 @@ html, body {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
   border-radius: 6px 0 0 6px;
-  color: var(--text);
   font-size: 13px;
   outline: none;
   transition: border-color 0.15s;
@@ -265,10 +278,7 @@ html, body {
   flex-shrink: 0;
 }
 
-.filter-preset-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .filter-preset-btn:hover → hover-highlight via common selector */
 
 .filter-preset-btn.active {
   color: var(--accent);
@@ -450,10 +460,7 @@ html, body {
   overflow: hidden;
 }
 
-.recent-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .recent-item:hover → hover-highlight via common selector */
 
 /* .recent-item .name → text-truncate via common selector */
 
@@ -499,10 +506,7 @@ html, body {
   overflow: hidden;
 }
 
-.tree-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .tree-item:hover → hover-highlight via common selector */
 
 .tree-item.active {
   background: var(--bg-active);
@@ -767,10 +771,7 @@ html, body {
 .search-bar input {
   flex: 1;
   padding: 4px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text);
   font-size: 13px;
   outline: none;
   min-width: 100px;
@@ -1244,9 +1245,6 @@ mark.search-hl.active {
   margin: 0 20px 8px;
   padding: 8px 10px;
   font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
   border-radius: 6px;
   outline: none;
   box-sizing: border-box;
@@ -1423,10 +1421,7 @@ mark.search-hl.active {
   line-height: 1;
 }
 
-.btn-icon:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .btn-icon:hover → hover-highlight via common selector */
 
 .btn-icon.active {
   color: var(--accent);
