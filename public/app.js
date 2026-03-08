@@ -54,6 +54,13 @@ function setTreeItemActive(rowEl) {
   treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
   if (rowEl) { rowEl.classList.add('active'); applyMarquee(rowEl); }
 }
+function resetPanelMode() {
+  contentBody.classList.remove('split-mode');
+  editorPanel.style.display = 'none';
+  livePreviewEl.style.display = 'none';
+  previewEl.style.display = 'block';
+  mdToolbar.style.display = 'none';
+}
 function setEditButtons(editing) {
   btnEdit.style.display = editing ? 'none' : 'inline-block';
   btnSave.style.display = editing ? 'inline-block' : 'none';
@@ -1145,10 +1152,7 @@ function showWelcomeScreen() {
   }
   stopDraftTimer();
   clearTimeout(livePreviewTimer);
-  contentBody.classList.remove('split-mode');
-  editorPanel.style.display = 'none';
-  livePreviewEl.style.display = 'none';
-  mdToolbar.style.display = 'none';
+  resetPanelMode();
   closeContentSearch();
   hideSaveErrorBanner();
   hideTOC();
@@ -1326,14 +1330,9 @@ ctxNewFolder.addEventListener('click', async () => {
 function showImagePreview(filePath) {
   isEditing = false;
   setDirty(false);
-  contentBody.classList.remove('split-mode');
-  editorPanel.style.display = 'none';
-  livePreviewEl.style.display = 'none';
-  previewEl.style.display = 'block';
-  mdToolbar.style.display = 'none';
-  btnEdit.style.display = 'none';
-  btnSave.style.display = 'none';
-  btnCancel.style.display = 'none';
+  resetPanelMode();
+  setEditButtons(false);
+  btnEdit.style.display = 'none'; // image: hide edit too
   hideTOC();
 
   const src = API.raw(filePath);
@@ -1360,11 +1359,7 @@ function showPreview(text, filePath) {
   isEditing = false;
   setDirty(false);
   lastSearchQuery = ''; // reset search cache since preview content changes
-  contentBody.classList.remove('split-mode');
-  editorPanel.style.display = 'none';
-  livePreviewEl.style.display = 'none';
-  previewEl.style.display = 'block';
-  mdToolbar.style.display = 'none';
+  resetPanelMode();
   setEditButtons(false);
 
   if (filePath && filePath.endsWith('.md')) {
@@ -1461,11 +1456,7 @@ previewEl.addEventListener('click', (e) => {
 
 function showPreviewMode() {
   isEditing = false;
-  contentBody.classList.remove('split-mode');
-  editorPanel.style.display = 'none';
-  livePreviewEl.style.display = 'none';
-  previewEl.style.display = 'block';
-  mdToolbar.style.display = 'none';
+  resetPanelMode();
   setEditButtons(false);
 }
 
@@ -2094,9 +2085,9 @@ document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); mdActions.bold(); return; }
     if (e.ctrlKey && e.key === 'i') { e.preventDefault(); mdActions.italic(); return; }
   }
-  if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomIn(); return; }
-  if (e.ctrlKey && e.key === '-') { e.preventDefault(); zoomOut(); return; }
-  if (e.ctrlKey && e.key === '0') { e.preventDefault(); zoomReset(); return; }
+  if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); adjustZoom(0.1); return; }
+  if (e.ctrlKey && e.key === '-') { e.preventDefault(); adjustZoom(-0.1); return; }
+  if (e.ctrlKey && e.key === '0') { e.preventDefault(); adjustZoom(0); return; }
   if (e.ctrlKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
   if (e.key === 'F11') {
     e.preventDefault();
@@ -2390,39 +2381,16 @@ function applyFontSize() {
   if (display) display.textContent = baseFontSize + 'px';
 }
 
-function zoomIn() {
-  if (currentPath && isImageFile(currentPath)) {
-    imageZoomLevel = Math.min(imageZoomLevel + 0.1, 3.0);
+function adjustZoom(delta) {
+  const isImage = currentPath && isImageFile(currentPath);
+  if (isImage) {
+    imageZoomLevel = delta === 0 ? 1.0 : Math.max(0.3, Math.min(3.0, imageZoomLevel + delta));
     applyImageZoom();
     showToast(`Image Zoom: ${Math.round(imageZoomLevel * 100)}%`, 'info');
   } else {
-    zoomLevel = Math.min(zoomLevel + 0.1, 2.0);
+    zoomLevel = delta === 0 ? 1.0 : Math.max(0.5, Math.min(2.0, zoomLevel + delta));
     applyZoom();
     showToast(`Zoom: ${Math.round(zoomLevel * 100)}%`, 'info');
-  }
-}
-
-function zoomOut() {
-  if (currentPath && isImageFile(currentPath)) {
-    imageZoomLevel = Math.max(imageZoomLevel - 0.1, 0.3);
-    applyImageZoom();
-    showToast(`Image Zoom: ${Math.round(imageZoomLevel * 100)}%`, 'info');
-  } else {
-    zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
-    applyZoom();
-    showToast(`Zoom: ${Math.round(zoomLevel * 100)}%`, 'info');
-  }
-}
-
-function zoomReset() {
-  if (currentPath && isImageFile(currentPath)) {
-    imageZoomLevel = 1.0;
-    applyImageZoom();
-    showToast('Image Zoom: 100%', 'info');
-  } else {
-    zoomLevel = 1.0;
-    applyZoom();
-    showToast('Zoom: 100%', 'info');
   }
 }
 
