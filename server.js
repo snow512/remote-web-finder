@@ -69,6 +69,14 @@ function createApp(docsDir, ignorePatterns) {
     }
   });
 
+  app.head('/api/file', (req, res) => {
+    const filePath = safePath(req.query.path || '');
+    if (!filePath) return res.status(400).end();
+    if (!fs.existsSync(filePath)) return res.status(404).end();
+    const stat = fs.statSync(filePath);
+    res.set('Content-Length', stat.size).type('text/plain').end();
+  });
+
   app.get('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });

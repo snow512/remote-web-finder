@@ -19,6 +19,7 @@ let treeData = [];
 let livePreviewTimer = null;
 let focusedTreeItem = null;
 let openFileController = null;
+let isLargeFile = false;
 let draftTimer = null;
 let tocObserver = null;
 const LONG_PRESS_MS = 500;
@@ -65,6 +66,7 @@ function setEditButtons(editing) {
   btnEdit.style.display = editing ? 'none' : 'inline-block';
   btnSave.style.display = editing ? 'inline-block' : 'none';
   btnCancel.style.display = editing ? 'inline-block' : 'none';
+  btnSearch.style.display = 'none';
 }
 async function throwIfNotOk(res) {
   if (res.ok) return;
@@ -109,6 +111,7 @@ const lineNumbersEl = $('#lineNumbers');
 const livePreviewEl = $('#livePreview');
 const toolbarEl = $('#toolbar');
 const breadcrumbEl = $('#breadcrumb');
+const btnSearch = $('#btnSearch');
 const btnEdit = $('#btnEdit');
 const btnSave = $('#btnSave');
 const btnCancel = $('#btnCancel');
@@ -1084,6 +1087,20 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
     return;
   }
 
+  // Large file warning
+  isLargeFile = false;
+  try {
+    const headRes = await fetch(API.file(filePath), { method: 'HEAD', signal });
+    const size = parseInt(headRes.headers.get('Content-Length'), 10) || 0;
+    if (size > 1024 * 1024) {
+      isLargeFile = true;
+      const sizeMB = (size / (1024 * 1024)).toFixed(1);
+      if (!(await airConfirm(`This file is ${sizeMB} MB (read-only). It may take a while to load.`, { okText: 'Open anyway' }))) return;
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+  }
+
   try {
     const res = await fetch(API.file(filePath), { signal });
     if (!res.ok) {
@@ -1122,6 +1139,10 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
     }
 
     showPreview(text, filePath);
+    if (isLargeFile) {
+      btnEdit.style.display = 'none';
+      btnSearch.style.display = 'inline-block';
+    }
     // Restore scroll position after render
     restoreScrollPosition(filePath);
   } catch (err) {
@@ -1408,12 +1429,18 @@ function showPreview(text, filePath) {
     previewEl.appendChild(iframe);
     hideTOC();
   } else {
-    const escaped = esc(text);
-    previewEl.innerHTML = `<pre><code>${escaped}</code></pre>`;
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    code.textContent = text;
+    pre.appendChild(code);
+    previewEl.innerHTML = '';
+    previewEl.appendChild(pre);
     hideTOC();
   }
 
-  previewEl.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+  if (text.length < 500000) {
+    previewEl.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+  }
   addCopyButtons(previewEl);
   updateStatusBar();
 }
@@ -1574,6 +1601,7 @@ editorEl.addEventListener('scroll', syncLineNumbersScroll);
    12. EDITOR + LIVE PREVIEW
    ============================================================ */
 function enterEditMode() {
+  if (isLargeFile) { showToast('File too large to edit', 'error'); return; }
   isEditing = true;
   hideSaveErrorBanner();
   closeContentSearch();
@@ -1840,12 +1868,17 @@ function clearSearchHighlights() {
   });
 }
 
+// Large-file text search state
+let largeSearchPositions = [];
+let largeSearchFullText = '';
+
 function performContentSearch() {
   const query = searchText.value.trim();
   if (query === lastSearchQuery) return;
   lastSearchQuery = query;
   clearSearchHighlights();
   searchMatches = [];
+  largeSearchPositions = [];
   searchIdx = -1;
 
   if (!query || isEditing) {
@@ -1857,21 +1890,80 @@ function performContentSearch() {
     return;
   }
 
-  highlightTextNodes(previewEl, query);
-
-  searchMatches = Array.from(previewEl.querySelectorAll('mark.search-hl'));
-  if (searchMatches.length > 0) {
-    searchIdx = 0;
-    activateMatch(0);
+  if (isLargeFile) {
+    performLargeFileSearch(query);
+  } else {
+    highlightTextNodes(previewEl, query);
+    searchMatches = Array.from(previewEl.querySelectorAll('mark.search-hl'));
+    if (searchMatches.length > 0) {
+      searchIdx = 0;
+      activateMatch(0);
+    }
   }
-  const noResults = searchMatches.length === 0 && query.length > 0;
-  searchCount.textContent = searchMatches.length > 0
-    ? `${searchIdx + 1}/${searchMatches.length}`
+
+  const total = isLargeFile ? largeSearchPositions.length : searchMatches.length;
+  const noResults = total === 0 && query.length > 0;
+  searchCount.textContent = total > 0
+    ? `${searchIdx + 1}/${total}`
     : 'No results';
   searchText.classList.toggle('no-results', noResults);
   searchCount.classList.toggle('no-results', noResults);
-  searchPrev.disabled = searchMatches.length === 0;
-  searchNext.disabled = searchMatches.length === 0;
+  searchPrev.disabled = total === 0;
+  searchNext.disabled = total === 0;
+}
+
+function performLargeFileSearch(query) {
+  const codeEl = previewEl.querySelector('code');
+  if (!codeEl) return;
+  largeSearchFullText = codeEl.textContent;
+  const lowerText = largeSearchFullText.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let pos = 0;
+  while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+    largeSearchPositions.push(pos);
+    pos += lowerQuery.length;
+  }
+  if (largeSearchPositions.length > 0) {
+    searchIdx = 0;
+    activateLargeMatch(0, query);
+  }
+}
+
+function activateLargeMatch(idx, query) {
+  const codeEl = previewEl.querySelector('code');
+  if (!codeEl) return;
+  // Remove previous highlight
+  const prev = codeEl.querySelector('mark.search-hl');
+  if (prev) {
+    prev.replaceWith(document.createTextNode(prev.textContent));
+    codeEl.normalize();
+  }
+  // Find the text node containing the match position
+  const pos = largeSearchPositions[idx];
+  const walker = document.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT);
+  let offset = 0;
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const nodeLen = node.textContent.length;
+    if (offset + nodeLen > pos) {
+      const localPos = pos - offset;
+      const before = node.textContent.slice(0, localPos);
+      const match = node.textContent.slice(localPos, localPos + query.length);
+      const after = node.textContent.slice(localPos + query.length);
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      const mark = document.createElement('mark');
+      mark.className = 'search-hl active';
+      mark.textContent = match;
+      frag.appendChild(mark);
+      if (after) frag.appendChild(document.createTextNode(after));
+      node.parentNode.replaceChild(frag, node);
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      break;
+    }
+    offset += nodeLen;
+  }
+  searchCount.textContent = `${idx + 1}/${largeSearchPositions.length}`;
 }
 
 function highlightTextNodes(root, query) {
@@ -1879,7 +1971,7 @@ function highlightTextNodes(root, query) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) => {
       const parent = node.parentElement;
-      if (parent && ['PRE', 'CODE', 'SCRIPT', 'STYLE', 'MARK'].includes(parent.tagName)) {
+      if (parent && ['SCRIPT', 'STYLE', 'MARK'].includes(parent.tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
       return node.textContent.toLowerCase().includes(lowerQuery)
@@ -1923,15 +2015,27 @@ function activateMatch(idx) {
 }
 
 function searchNextMatch() {
-  if (searchMatches.length === 0) return;
-  searchIdx = (searchIdx + 1) % searchMatches.length;
-  activateMatch(searchIdx);
+  if (isLargeFile) {
+    if (largeSearchPositions.length === 0) return;
+    searchIdx = (searchIdx + 1) % largeSearchPositions.length;
+    activateLargeMatch(searchIdx, lastSearchQuery);
+  } else {
+    if (searchMatches.length === 0) return;
+    searchIdx = (searchIdx + 1) % searchMatches.length;
+    activateMatch(searchIdx);
+  }
 }
 
 function searchPrevMatch() {
-  if (searchMatches.length === 0) return;
-  searchIdx = (searchIdx - 1 + searchMatches.length) % searchMatches.length;
-  activateMatch(searchIdx);
+  if (isLargeFile) {
+    if (largeSearchPositions.length === 0) return;
+    searchIdx = (searchIdx - 1 + largeSearchPositions.length) % largeSearchPositions.length;
+    activateLargeMatch(searchIdx, lastSearchQuery);
+  } else {
+    if (searchMatches.length === 0) return;
+    searchIdx = (searchIdx - 1 + searchMatches.length) % searchMatches.length;
+    activateMatch(searchIdx);
+  }
 }
 
 let searchTimer = null;
@@ -2259,6 +2363,7 @@ window.addEventListener('beforeunload', (e) => {
    18. EVENTS
    ============================================================ */
 btnEdit.addEventListener('click', enterEditMode);
+btnSearch.addEventListener('click', openContentSearch);
 btnSave.addEventListener('click', saveFile);
 btnCancel.addEventListener('click', cancelEdit);
 hamburger.addEventListener('click', () => {
