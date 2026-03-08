@@ -1579,6 +1579,7 @@ mark.search-hl.active {
   padding: 24px;
   gap: 16px;
   overflow: auto;
+  touch-action: pan-x pan-y;
 }
 .image-preview .image-name {
   color: var(--text-muted);

@@ -1348,6 +1348,44 @@ function showImagePreview(filePath) {
       previewEl.innerHTML = `<div class="welcome"><h1>Image not found</h1><p>${esc(filePath)}</p></div>`;
     };
   }
+  // Pinch-to-zoom on image
+  const container = previewEl.querySelector('.image-preview');
+  if (container) {
+    // Trackpad / mouse wheel pinch (ctrlKey indicates pinch gesture)
+    container.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.05 : 0.05;
+      imageZoomLevel = Math.max(0.3, Math.min(3.0, imageZoomLevel + delta));
+      applyImageZoom();
+    }, { passive: false });
+
+    // Touch pinch gesture
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1.0;
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        pinchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        pinchStartZoom = imageZoomLevel;
+      }
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const scale = dist / pinchStartDist;
+        imageZoomLevel = Math.max(0.3, Math.min(3.0, pinchStartZoom * scale));
+        applyImageZoom();
+      }
+    }, { passive: false });
+  }
+
   updateStatusBar();
 }
 
