@@ -35,6 +35,11 @@ const DRAFT_PREFIX = 'rwf-draft:';
 const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
+/* === Path Utilities === */
+function getFileName(p) { return p ? p.split('/').pop() : ''; }
+function getDirPath(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : ''; }
+function getDirName(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : ''; }
+
 /* === DOM === */
 const $ = (sel) => document.querySelector(sel);
 const treeEl = $('#tree');
@@ -356,7 +361,7 @@ function renderRecent() {
   list.forEach(p => {
     const item = document.createElement('div');
     item.className = 'recent-item';
-    const name = p.split('/').pop();
+    const name = getFileName(p);
     item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
     item.addEventListener('click', () => {
       const row = treeEl.querySelector(`[data-path="${CSS.escape(p)}"]`);
@@ -423,7 +428,7 @@ function renderTree(items, parentEl, depth) {
         row.classList.remove('drag-over');
         const sourcePath = e.dataTransfer.getData('text/plain');
         if (!sourcePath) return;
-        const fileName = sourcePath.split('/').pop();
+        const fileName = getFileName(sourcePath);
         const newPath = item.path + '/' + fileName;
         if (sourcePath === newPath) return;
         try {
@@ -902,7 +907,7 @@ function filterTree(container, query, exts) {
 
   container.querySelectorAll(':scope > .tree-item[data-path]').forEach(item => {
     const filePath = (item.dataset.path || '').toLowerCase();
-    const name = filePath.split('/').pop();
+    const name = getFileName(filePath);
     const matchesQuery = !query || filePath.includes(query);
     const matchesExt = !exts || exts.some(ext => name.endsWith(ext));
     if (matchesQuery && matchesExt) {
@@ -973,7 +978,7 @@ function updateDirtyIndicator() {
   }
 
   // Tab title
-  const fileName = currentPath ? currentPath.split('/').pop() : '';
+  const fileName = getFileName(currentPath);
   document.title = isDirty ? `* ${fileName} — ${BASE_TITLE}` : (fileName ? `${fileName} — ${BASE_TITLE}` : BASE_TITLE);
 }
 
@@ -1161,8 +1166,8 @@ ctxRename.addEventListener('click', async () => {
   closeContextMenu();
   if (!target) return;
 
-  const name = target.split('/').pop();
-  const dirPart = target.includes('/') ? target.substring(0, target.lastIndexOf('/') + 1) : '';
+  const name = getFileName(target);
+  const dirPart = getDirPath(target);
   const newName = await airPrompt('Rename to:', name);
   if (!newName || newName === name) return;
 
@@ -1222,14 +1227,14 @@ ctxCopy.addEventListener('click', async () => {
   closeContextMenu();
   if (!target) return;
 
-  const name = target.split('/').pop();
+  const name = getFileName(target);
   const ext = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
   const base = ext ? name.substring(0, name.lastIndexOf('.')) : name;
   const defaultName = `${base} (copy)${ext}`;
   const newName = await airPrompt('Copy as:', defaultName);
   if (!newName || newName === name) return;
 
-  const dirPart = target.includes('/') ? target.substring(0, target.lastIndexOf('/') + 1) : '';
+  const dirPart = getDirPath(target);
   const newPath = dirPart + newName;
   try {
     // Read source, then create copy
@@ -1318,7 +1323,7 @@ function showImagePreview(filePath) {
   hideTOC();
 
   const src = `/api/raw?path=${encodeURIComponent(filePath)}`;
-  const name = filePath.split('/').pop();
+  const name = getFileName(filePath);
   previewEl.innerHTML = `<div class="image-preview"><p class="image-name">${esc(name)}</p><img src="${src}" alt="${esc(name)}" /></div>`;
   const img = previewEl.querySelector('img');
   if (img) {
@@ -1413,7 +1418,7 @@ previewEl.addEventListener('click', (e) => {
   e.preventDefault();
 
   // Resolve relative path against current file's directory
-  const currentDir = currentPath ? currentPath.substring(0, currentPath.lastIndexOf('/')) : '';
+  const currentDir = getDirName(currentPath);
   let targetPath = href.split('#')[0]; // strip anchor
   if (!targetPath) return;
 
