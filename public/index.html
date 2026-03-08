@@ -33,8 +33,18 @@
         </div>
       </div>
       <div class="recent-files" id="recentFiles" style="display:none">
-        <div class="recent-header">Recent<button class="recent-clear" id="recentClear" title="Clear all">✕</button></div>
+        <div class="section-header" id="recentHeader">
+          <span class="section-header-left"><span class="section-toggle" id="recentToggle">&#9660;</span><span class="section-title">Recent</span></span>
+          <div class="section-actions"><button class="section-btn" id="recentClear" title="Clear all">✕</button></div>
+        </div>
         <div class="recent-list" id="recentList"></div>
+      </div>
+      <div class="section-header" id="treeHeader">
+        <span class="section-header-left"><span class="section-toggle" id="treeToggle">&#9660;</span><span class="section-title">Tree</span></span>
+        <div class="section-actions">
+          <button class="section-btn" id="btnExpandAll" title="Expand all (1 level)">&#9660;</button>
+          <button class="section-btn" id="btnCollapseAll" title="Collapse all">&#9654;</button>
+        </div>
       </div>
       <div class="tree" id="tree" tabindex="0"></div>
     </aside>
@@ -116,7 +126,23 @@
   <!-- Context menu -->
   <div class="context-menu" id="contextMenu" style="display:none">
     <div class="context-item" id="ctxRename">Rename</div>
-    <div class="context-item danger" id="ctxDelete">Delete file</div>
+    <div class="context-item" id="ctxCopy">Copy</div>
+    <div class="context-item" id="ctxNewFile">New file</div>
+    <div class="context-item" id="ctxNewFolder">New folder</div>
+    <div class="context-item danger" id="ctxDelete">Delete</div>
+  </div>
+
+  <!-- Air Popup (common dialog) -->
+  <div class="air-popup-overlay" id="airPopupOverlay" style="display:none">
+    <div class="air-popup">
+      <div class="air-popup-title" id="airPopupTitle"></div>
+      <div class="air-popup-body" id="airPopupBody"></div>
+      <input type="text" class="air-popup-input" id="airPopupInput" style="display:none">
+      <div class="air-popup-actions">
+        <button class="air-popup-btn cancel" id="airPopupCancel">Cancel</button>
+        <button class="air-popup-btn ok" id="airPopupOk">OK</button>
+      </div>
+    </div>
   </div>
 
   <!-- Keyboard shortcuts help -->

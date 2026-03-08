@@ -59,6 +59,8 @@ const filterCountEl = $('#filterCount');
 const recentFilesEl = $('#recentFiles');
 const recentListEl = $('#recentList');
 const recentClearBtn = $('#recentClear');
+const btnExpandAll = $('#btnExpandAll');
+const btnCollapseAll = $('#btnCollapseAll');
 const tocEl = $('#toc');
 const tocListEl = $('#tocList');
 const contentBody = $('#contentBody');
@@ -74,6 +76,15 @@ const resizeHandle = $('#resizeHandle');
 const contextMenu = $('#contextMenu');
 const ctxDelete = $('#ctxDelete');
 const ctxRename = $('#ctxRename');
+const ctxCopy = $('#ctxCopy');
+const ctxNewFile = $('#ctxNewFile');
+const ctxNewFolder = $('#ctxNewFolder');
+const airPopupOverlay = $('#airPopupOverlay');
+const airPopupTitle = $('#airPopupTitle');
+const airPopupBody = $('#airPopupBody');
+const airPopupInput = $('#airPopupInput');
+const airPopupOk = $('#airPopupOk');
+const airPopupCancel = $('#airPopupCancel');
 const saveErrorBanner = $('#saveErrorBanner');
 const saveErrorMsg = $('#saveErrorMsg');
 const saveErrorRetry = $('#saveErrorRetry');
@@ -184,6 +195,109 @@ function showToast(message, type = 'info') {
 }
 
 /* ============================================================
+   1-B. AIR POPUP (common dialog component)
+   ============================================================ */
+function airAlert(title, message) {
+  return new Promise(resolve => {
+    airPopupTitle.textContent = title;
+    airPopupBody.textContent = message || '';
+    airPopupInput.style.display = 'none';
+    airPopupCancel.style.display = 'none';
+    airPopupOk.textContent = 'OK';
+    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOverlay.style.display = 'flex';
+    const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
+    airPopupOk.onclick = done;
+    airPopupCancel.onclick = null;
+    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(); };
+    airPopupOk.focus();
+  });
+}
+
+function airError(title, errorMsg) {
+  return new Promise(resolve => {
+    airPopupTitle.textContent = title;
+    airPopupBody.innerHTML = '';
+    const msgEl = document.createElement('div');
+    msgEl.className = 'air-popup-error-msg';
+    msgEl.textContent = errorMsg || '';
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'air-popup-copy-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = () => {
+      const text = errorMsg || '';
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    };
+    airPopupBody.appendChild(msgEl);
+    airPopupBody.appendChild(copyBtn);
+    airPopupInput.style.display = 'none';
+    airPopupCancel.style.display = 'none';
+    airPopupOk.textContent = 'OK';
+    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOverlay.style.display = 'flex';
+    const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
+    airPopupOk.onclick = done;
+    airPopupCancel.onclick = null;
+    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(); };
+    airPopupOk.focus();
+  });
+}
+
+function airConfirm(title, { okText = 'OK', danger = false } = {}) {
+  return new Promise(resolve => {
+    airPopupTitle.textContent = title;
+    airPopupBody.textContent = '';
+    airPopupInput.style.display = 'none';
+    airPopupCancel.style.display = '';
+    airPopupCancel.textContent = 'Cancel';
+    airPopupOk.textContent = okText;
+    airPopupOk.className = 'air-popup-btn ok' + (danger ? ' danger' : '');
+    airPopupOverlay.style.display = 'flex';
+    const done = (v) => { airPopupOverlay.style.display = 'none'; resolve(v); };
+    airPopupOk.onclick = () => done(true);
+    airPopupCancel.onclick = () => done(false);
+    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(false); };
+    airPopupOk.focus();
+  });
+}
+
+function airPrompt(title, defaultValue = '') {
+  return new Promise(resolve => {
+    airPopupTitle.textContent = title;
+    airPopupBody.textContent = '';
+    airPopupInput.style.display = '';
+    airPopupInput.value = defaultValue;
+    airPopupCancel.style.display = '';
+    airPopupCancel.textContent = 'Cancel';
+    airPopupOk.textContent = 'OK';
+    airPopupOk.className = 'air-popup-btn ok';
+    airPopupOverlay.style.display = 'flex';
+    airPopupInput.focus();
+    airPopupInput.select();
+    const done = (v) => {
+      airPopupOverlay.style.display = 'none';
+      airPopupInput.onkeydown = null;
+      resolve(v);
+    };
+    airPopupOk.onclick = () => done(airPopupInput.value.trim() || null);
+    airPopupCancel.onclick = () => done(null);
+    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(null); };
+    airPopupInput.onkeydown = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); airPopupOk.click(); }
+      if (e.key === 'Escape') { e.preventDefault(); airPopupCancel.click(); }
+    };
+  });
+}
+
+/* ============================================================
    2. THEME TOGGLE
    ============================================================ */
 function getTheme() {
@@ -261,13 +375,12 @@ async function loadTree() {
     if (!res.ok) throw new Error('Server error');
     treeData = await res.json();
   } catch (err) {
-    showToast('Failed to load file tree: ' + err.message, 'error');
+    airError('Failed to load file tree', err.message);
     return;
   }
   treeEl.innerHTML = '';
   focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
-  autoExpandDepth(1);
   // Restore active highlight for current file
   if (currentPath) {
     const activeRow = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
@@ -296,6 +409,7 @@ function renderTree(items, parentEl, depth) {
 
       row.addEventListener('click', () => toggleDir(row, childrenEl));
       row.addEventListener('contextmenu', (e) => showContextMenu(e, item.path, 'dir'));
+      initLongPress(row, item.path, 'dir');
 
       // Drop target (directories)
       row.addEventListener('dragover', (e) => {
@@ -313,7 +427,7 @@ function renderTree(items, parentEl, depth) {
         const newPath = item.path + '/' + fileName;
         if (sourcePath === newPath) return;
         try {
-          const res = await fetch(`/api/file?path=${encodeURIComponent(sourcePath)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
+          const res = await fetch(`/api/rename?path=${encodeURIComponent(sourcePath)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
           if (!res.ok) throw new Error((await res.json()).error);
           showToast(`Moved: ${fileName} → ${item.name}/`, 'success');
           removeRecent(sourcePath);
@@ -339,7 +453,7 @@ function renderTree(items, parentEl, depth) {
             if (newRow) { newRow.classList.add('active'); applyMarquee(newRow); }
           }
         } catch (err) {
-          showToast('Move failed: ' + err.message, 'error');
+          airError('Move failed', err.message);
         }
       });
 
@@ -405,6 +519,17 @@ function autoExpandDepth(maxDepth) {
     });
   }
   expand(treeEl, 1);
+}
+
+function collapseAll() {
+  treeEl.querySelectorAll('.tree-children.open').forEach(ch => collapseDir(ch));
+}
+
+function expandAllFirstLevel() {
+  collapseAll();
+  treeEl.querySelectorAll(':scope > .tree-dir > .tree-children').forEach(ch => {
+    expandDir(ch);
+  });
 }
 
 
@@ -860,9 +985,9 @@ function setDirty(dirty) {
 /* ============================================================
    7. FILE OPERATIONS
    ============================================================ */
-async function openFile(filePath, rowEl) {
+async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
   if (isDirty) {
-    if (!confirm('Discard unsaved changes?')) return;
+    if (!(await airConfirm('Discard unsaved changes?'))) return;
   }
 
   // Abort in-flight save for previous file
@@ -884,10 +1009,12 @@ async function openFile(filePath, rowEl) {
   toolbarEl.style.display = 'flex';
   toolbarEl.classList.add('has-file');
 
-  // Update URL for sharing
+  // Update URL for sharing / history navigation
   const url = new URL(window.location);
   url.searchParams.set('file', filePath);
-  history.replaceState(null, '', url);
+  if (pushHistory) {
+    history.pushState({ file: filePath }, '', url);
+  }
 
   closeSidebar();
   closeContentSearch();
@@ -927,7 +1054,7 @@ async function openFile(filePath, rowEl) {
     // Check for draft recovery
     const draft = getDraft(filePath);
     if (draft !== null && draft !== text) {
-      if (confirm('Unsaved draft found. Restore it?')) {
+      if (await airConfirm('Unsaved draft found. Restore it?', { okText: 'Restore' })) {
         originalContent = text;
         showPreview(text, filePath);
         // Go straight to edit mode with draft content
@@ -967,19 +1094,48 @@ const ctxMenu = createPopupMenu({
 
 function showContextMenu(e, targetPath, type = 'file') {
   e.preventDefault();
-  if (type !== 'file') return;
   ctxTargetPath = targetPath;
   ctxTargetType = type;
+  // Show/hide menu items based on type
+  const isDir = type === 'dir';
+  ctxCopy.style.display = isDir ? 'none' : '';
+  ctxNewFile.style.display = isDir ? '' : 'none';
+  ctxNewFolder.style.display = isDir ? '' : 'none';
+  ctxDelete.style.display = isDir ? 'none' : '';
   ctxMenu.show(e.clientX, e.clientY);
 }
 
 function closeContextMenu() { ctxMenu.close(); }
 
+function showWelcomeScreen() {
+  if (isEditing) {
+    isEditing = false;
+    if (saveController) saveController.abort();
+  }
+  stopDraftTimer();
+  clearTimeout(livePreviewTimer);
+  contentBody.classList.remove('split-mode');
+  editorPanel.style.display = 'none';
+  livePreviewEl.style.display = 'none';
+  mdToolbar.style.display = 'none';
+  closeContentSearch();
+  hideSaveErrorBanner();
+  hideTOC();
+  treeEl.querySelectorAll('.tree-item.active').forEach(el => { removeMarquee(el); el.classList.remove('active'); });
+  currentPath = null;
+  setDirty(false);
+  toolbarEl.style.display = 'none';
+  toolbarEl.classList.remove('has-file');
+  previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
+  document.title = BASE_TITLE;
+  statusBar.style.display = 'none';
+}
+
 ctxDelete.addEventListener('click', async () => {
   const target = ctxTargetPath;
   closeContextMenu();
   if (!target) return;
-  if (!confirm(`Delete "${target}"?`)) return;
+  if (!(await airConfirm(`Delete "${target}"?`, { okText: 'Delete', danger: true }))) return;
 
   try {
     const res = await fetch(`/api/file?path=${encodeURIComponent(target)}`, { method: 'DELETE' });
@@ -988,77 +1144,160 @@ ctxDelete.addEventListener('click', async () => {
     removeRecent(target);
     clearDraft(target);
     if (currentPath === target) {
-      // Clean up editing state
-      if (isEditing) {
-        isEditing = false;
-        if (saveController) saveController.abort();
-      }
-      stopDraftTimer();
-      contentBody.classList.remove('split-mode');
-      editorPanel.style.display = 'none';
-      livePreviewEl.style.display = 'none';
-      mdToolbar.style.display = 'none';
-      closeContentSearch();
-      hideSaveErrorBanner();
-      hideTOC();
-      currentPath = null;
-      setDirty(false);
-      toolbarEl.style.display = 'none';
-      toolbarEl.classList.remove('has-file');
-      previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
-      document.title = BASE_TITLE;
-      statusBar.style.display = 'none';
+      showWelcomeScreen();
       const url = new URL(window.location);
       url.searchParams.delete('file');
       history.replaceState(null, '', url);
     }
     await loadTree();
   } catch (err) {
-    showToast('Delete failed: ' + err.message, 'error');
+    airError('Delete failed', err.message);
   }
 });
 
 ctxRename.addEventListener('click', async () => {
   const target = ctxTargetPath;
+  const type = ctxTargetType;
   closeContextMenu();
   if (!target) return;
 
-  const fileName = target.split('/').pop();
+  const name = target.split('/').pop();
   const dirPart = target.includes('/') ? target.substring(0, target.lastIndexOf('/') + 1) : '';
-  const newName = prompt('Rename to:', fileName);
-  if (!newName || !newName.trim() || newName.trim() === fileName) return;
+  const newName = await airPrompt('Rename to:', name);
+  if (!newName || newName === name) return;
 
-  const newPath = dirPart + newName.trim();
+  const newPath = dirPart + newName;
   try {
-    const res = await fetch(`/api/file?path=${encodeURIComponent(target)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
-    if (!res.ok) throw new Error((await res.json()).error);
-    showToast(`Renamed: ${fileName} → ${newName.trim()}`, 'success');
-    removeRecent(target);
-    if (currentPath === target) {
-      // Migrate draft to new path if editing
-      if (isEditing && isDirty) {
-        clearDraft(target);
-        currentPath = newPath;
-        saveDraft();
-      } else {
-        clearDraft(target);
-        currentPath = newPath;
+    const res = await fetch(`/api/rename?path=${encodeURIComponent(target)}&newPath=${encodeURIComponent(newPath)}`, { method: 'PATCH' });
+    if (!res.ok) {
+      const body = await res.text();
+      let msg;
+      try { msg = JSON.parse(body).error; } catch { msg = body || res.statusText; }
+      throw new Error(msg);
+    }
+    showToast(`Renamed: ${name} → ${newName}`, 'success');
+
+    if (type === 'file') {
+      removeRecent(target);
+      if (currentPath === target) {
+        if (isEditing && isDirty) {
+          clearDraft(target);
+          currentPath = newPath;
+          saveDraft();
+        } else {
+          clearDraft(target);
+          currentPath = newPath;
+        }
+        renderBreadcrumb(newPath);
+        addRecent(newPath);
+        const url = new URL(window.location);
+        url.searchParams.set('file', newPath);
+        history.replaceState(null, '', url);
       }
-      renderBreadcrumb(newPath);
-      addRecent(newPath);
-      // Update URL to reflect new file path
+    } else if (type === 'dir' && currentPath && currentPath.startsWith(target + '/')) {
+      // Current file is inside renamed directory — update path
+      const updatedPath = newPath + currentPath.substring(target.length);
+      clearDraft(currentPath);
+      currentPath = updatedPath;
+      if (isEditing && isDirty) saveDraft();
+      renderBreadcrumb(updatedPath);
       const url = new URL(window.location);
-      url.searchParams.set('file', newPath);
+      url.searchParams.set('file', updatedPath);
       history.replaceState(null, '', url);
     }
+
     await loadTree();
-    if (currentPath === newPath) {
-      const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+    if (currentPath) {
+      const row = treeEl.querySelector(`[data-path="${CSS.escape(currentPath)}"]`);
       if (row) { row.classList.add('active'); applyMarquee(row); }
-      expandPathTo(newPath);
+      expandPathTo(currentPath);
     }
   } catch (err) {
-    showToast('Rename failed: ' + err.message, 'error');
+    airError('Rename failed', err.message);
+  }
+});
+
+ctxCopy.addEventListener('click', async () => {
+  const target = ctxTargetPath;
+  closeContextMenu();
+  if (!target) return;
+
+  const name = target.split('/').pop();
+  const ext = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
+  const base = ext ? name.substring(0, name.lastIndexOf('.')) : name;
+  const defaultName = `${base} (copy)${ext}`;
+  const newName = await airPrompt('Copy as:', defaultName);
+  if (!newName || newName === name) return;
+
+  const dirPart = target.includes('/') ? target.substring(0, target.lastIndexOf('/') + 1) : '';
+  const newPath = dirPart + newName;
+  try {
+    // Read source, then create copy
+    const srcRes = await fetch(`/api/file?path=${encodeURIComponent(target)}`);
+    if (!srcRes.ok) throw new Error('Source not found');
+    const content = await srcRes.text();
+    const createRes = await fetch(`/api/file?path=${encodeURIComponent(newPath)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: content
+    });
+    if (!createRes.ok) throw new Error((await createRes.json()).error);
+    showToast(`Copied: ${newName}`, 'success');
+    await loadTree();
+    expandPathTo(newPath);
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+    if (row) openFile(newPath, row);
+  } catch (err) {
+    airError('Copy failed', err.message);
+  }
+});
+
+ctxNewFile.addEventListener('click', async () => {
+  const dirPath = ctxTargetPath;
+  closeContextMenu();
+  if (!dirPath) return;
+
+  const fileName = await airPrompt('New file name:');
+  if (!fileName) return;
+
+  const newPath = dirPath + '/' + fileName;
+  try {
+    const res = await fetch(`/api/file?path=${encodeURIComponent(newPath)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: ''
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    showToast(`Created: ${fileName}`, 'success');
+    await loadTree();
+    expandPathTo(newPath);
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(newPath)}"]`);
+    if (row) {
+      await openFile(newPath, row);
+      enterEditMode();
+    }
+  } catch (err) {
+    airError('Create failed', err.message);
+  }
+});
+
+ctxNewFolder.addEventListener('click', async () => {
+  const dirPath = ctxTargetPath;
+  closeContextMenu();
+  if (!dirPath) return;
+
+  const folderName = await airPrompt('New folder name:');
+  if (!folderName) return;
+
+  const newPath = dirPath + '/' + folderName;
+  try {
+    const res = await fetch(`/api/folder?path=${encodeURIComponent(newPath)}`, { method: 'POST' });
+    if (!res.ok) throw new Error((await res.json()).error);
+    showToast(`Created folder: ${folderName}`, 'success');
+    await loadTree();
+    expandPathTo(newPath + '/dummy');
+  } catch (err) {
+    airError('Create folder failed', err.message);
   }
 });
 
@@ -1114,6 +1353,14 @@ function showPreview(text, filePath) {
   if (filePath && filePath.endsWith('.md')) {
     previewEl.innerHTML = marked.parse(text);
     buildTOC(previewEl);
+  } else if (filePath && /\.(html?|htm)$/i.test(filePath)) {
+    const iframe = document.createElement('iframe');
+    iframe.className = 'html-preview-iframe';
+    iframe.sandbox = 'allow-same-origin';
+    iframe.srcdoc = text;
+    previewEl.innerHTML = '';
+    previewEl.appendChild(iframe);
+    hideTOC();
   } else {
     const escaped = esc(text);
     previewEl.innerHTML = `<pre><code>${escaped}</code></pre>`;
@@ -1422,8 +1669,8 @@ async function saveFile() {
   }
 }
 
-function cancelEdit() {
-  if (isDirty && !confirm('Discard unsaved changes?')) return;
+async function cancelEdit() {
+  if (isDirty && !(await airConfirm('Discard unsaved changes?'))) return;
   if (saveController) saveController.abort();
   setDirty(false);
   clearDraft(currentPath);
@@ -1481,8 +1728,8 @@ const mdActions = {
   ol:      () => mdLinePrefix('1. '),
   code:    () => mdWrap('`', '`'),
   quote:   () => mdLinePrefix('> '),
-  table:   () => {
-    const input = prompt('Table size (rows x cols):', '3x3');
+  table:   async () => {
+    const input = await airPrompt('Table size (rows x cols):', '3x3');
     if (!input) return;
     const match = input.match(/(\d+)\s*[x×X]\s*(\d+)/);
     if (!match) { showToast('Format: 3x3', 'error'); return; }
@@ -2224,16 +2471,61 @@ $('#settingsWrapToggle')?.addEventListener('click', () => {
 /* ============================================================
    BOOT
    ============================================================ */
-recentClearBtn.addEventListener('click', clearRecent);
+// Section header toggle (common behavior)
+function initSectionToggle(headerEl, toggleEl, bodyEl) {
+  headerEl.addEventListener('click', (e) => {
+    if (e.target.closest('.section-btn')) return;
+    toggleEl.classList.toggle('collapsed');
+    bodyEl.classList.toggle('collapsed');
+  });
+}
+initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl);
+initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl);
+
+recentClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRecent(); });
+btnExpandAll.addEventListener('click', (e) => { e.stopPropagation(); expandAllFirstLevel(); });
+btnCollapseAll.addEventListener('click', (e) => { e.stopPropagation(); collapseAll(); });
 await loadTree();
 
-// Open file from URL ?file= parameter
+// Set initial history state
 const urlFileParam = new URLSearchParams(window.location.search).get('file');
+history.replaceState({ file: urlFileParam || null }, '');
+
 if (urlFileParam) {
   const row = treeEl.querySelector(`[data-path="${CSS.escape(urlFileParam)}"]`);
   if (row) row.scrollIntoView({ block: 'nearest' });
   openFile(urlFileParam, row);
 }
+
+// Browser back/forward navigation
+window.addEventListener('popstate', async (e) => {
+  const filePath = e.state?.file || new URLSearchParams(window.location.search).get('file');
+  if (filePath) {
+    const row = treeEl.querySelector(`[data-path="${CSS.escape(filePath)}"]`);
+    // Use openFile but prevent it from pushing another history entry
+    if (isDirty) {
+      if (!(await airConfirm('Discard unsaved changes?'))) {
+        // Re-push current state to cancel back
+        const url = new URL(window.location);
+        url.searchParams.set('file', currentPath);
+        history.pushState({ file: currentPath }, '', url);
+        return;
+      }
+    }
+    setDirty(false);
+    openFile(filePath, row, { pushHistory: false });
+  } else {
+    if (isDirty) {
+      if (!(await airConfirm('Discard unsaved changes?'))) {
+        const url = new URL(window.location);
+        url.searchParams.set('file', currentPath);
+        history.pushState({ file: currentPath }, '', url);
+        return;
+      }
+    }
+    showWelcomeScreen();
+  }
+});
 
 // Open sidebar on mobile when no file is selected
 if (!currentPath && window.innerWidth <= 768) {

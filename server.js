@@ -116,22 +116,6 @@ function createApp(docsDir, ignorePatterns) {
     }
   });
 
-  app.patch('/api/file', (req, res) => {
-    const oldPath = safePath(req.query.path || '');
-    const newPath = safePath(req.query.newPath || '');
-    if (!oldPath || !newPath) return res.status(400).json({ error: 'Invalid path' });
-    if (!fs.existsSync(oldPath)) return res.status(404).json({ error: 'Source not found' });
-    if (fs.existsSync(newPath)) return res.status(409).json({ error: 'Destination already exists' });
-    try {
-      const dir = path.dirname(newPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.renameSync(oldPath, newPath);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   app.delete('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
@@ -151,6 +135,23 @@ function createApp(docsDir, ignorePatterns) {
     if (fs.existsSync(folderPath)) return res.status(409).json({ error: 'Already exists' });
     try {
       fs.mkdirSync(folderPath, { recursive: true });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- Rename API (works for both files and folders) ---
+  app.patch('/api/rename', (req, res) => {
+    const oldPath = safePath(req.query.path || '');
+    const newPath = safePath(req.query.newPath || '');
+    if (!oldPath || !newPath) return res.status(400).json({ error: 'Invalid path' });
+    if (!fs.existsSync(oldPath)) return res.status(404).json({ error: 'Source not found' });
+    if (fs.existsSync(newPath)) return res.status(409).json({ error: 'Destination already exists' });
+    try {
+      const dir = path.dirname(newPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.renameSync(oldPath, newPath);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -225,7 +226,16 @@ Ignore files:
     process.exit(0);
   }
 
-  const PORT = parseInt(getArg(['-p', '--port'], '5999'), 10);
+  // Load .env file if present
+  const envPath = require('path').join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    fs.readFileSync(envPath, 'utf-8').split('\n').forEach(line => {
+      const m = line.match(/^\s*([^#=]+?)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+    });
+  }
+
+  const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10);
 
   // --bg: re-spawn as detached background process
   if (hasFlag(['-b', '--bg']) && !process.env.__RWF_BG) {

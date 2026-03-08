@@ -224,11 +224,11 @@ describe('API endpoints', () => {
     });
   });
 
-  // --- PATCH /api/file ---
-  describe('PATCH /api/file', () => {
+  // --- PATCH /api/rename ---
+  describe('PATCH /api/rename', () => {
     test('renames file', async () => {
       const res = await request(app)
-        .patch('/api/file')
+        .patch('/api/rename')
         .query({ path: 'hello.md', newPath: 'renamed.md' });
       expect(res.status).toBe(200);
       expect(res.body.ok).toBe(true);
@@ -237,23 +237,34 @@ describe('API endpoints', () => {
       expect(fs.existsSync(path.join(tmpDir, 'renamed.md'))).toBe(true);
     });
 
+    test('renames folder', async () => {
+      const res = await request(app)
+        .patch('/api/rename')
+        .query({ path: 'sub', newPath: 'sub-renamed' });
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+
+      expect(fs.existsSync(path.join(tmpDir, 'sub'))).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, 'sub-renamed'))).toBe(true);
+    });
+
     test('returns 404 for missing source', async () => {
       const res = await request(app)
-        .patch('/api/file')
+        .patch('/api/rename')
         .query({ path: 'nope.md', newPath: 'other.md' });
       expect(res.status).toBe(404);
     });
 
     test('returns 409 if destination exists', async () => {
       const res = await request(app)
-        .patch('/api/file')
+        .patch('/api/rename')
         .query({ path: 'hello.md', newPath: 'readme.txt' });
       expect(res.status).toBe(409);
     });
 
     test('returns 400 for path traversal in newPath', async () => {
       const res = await request(app)
-        .patch('/api/file')
+        .patch('/api/rename')
         .query({ path: 'hello.md', newPath: '../escape.md' });
       expect(res.status).toBe(400);
     });
