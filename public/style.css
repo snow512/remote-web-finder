@@ -1,5 +1,6 @@
 /* === Reset & Base === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button, input, select, textarea { color: inherit; }
 
 /* === Dark Theme (default) === */
 :root, [data-theme="dark"] {
@@ -478,7 +479,7 @@ html, body {
 
 /* .recent-item:hover → hover-highlight via common selector */
 
-.recent-empty {
+.recent-empty, .favorites-empty {
   padding: 6px 16px;
   font-size: 12px;
   color: var(--text-muted);
@@ -496,6 +497,51 @@ html, body {
 .icon svg {
   width: 100%;
   height: 100%;
+}
+
+/* === Favorites === */
+.favorites-section {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+  flex-shrink: 0;
+}
+
+.favorites-list.collapsed {
+  display: none;
+}
+
+.favorite-item {
+  display: flex;
+  align-items: center;
+  padding: 3px 16px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background 0.1s;
+  overflow: hidden;
+}
+
+.favorite-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.favorite-item .icon {
+  margin-right: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  width: 16px;
+  height: 16px;
+}
+
+.favorite-item .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tree.collapsed {
@@ -669,6 +715,16 @@ html, body {
   overflow: hidden;
   min-width: 0;
   flex-wrap: nowrap;
+  flex: 1;
+}
+
+.toolbar:not(.has-file) .toolbar-actions,
+.toolbar:not(.has-file) #btnFocus {
+  display: none;
+}
+
+.toolbar:not(.has-file) .breadcrumb {
+  justify-content: flex-start;
 }
 
 .breadcrumb-sep {
@@ -896,6 +952,101 @@ mark.search-hl.active {
   font-size: 28px;
   margin-bottom: 8px;
   color: var(--text);
+}
+
+/* === Dashboard === */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+  color: var(--text-muted);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.dash-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.dash-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 28px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 100px;
+}
+
+.dash-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.dash-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.dash-section {
+  width: 100%;
+}
+
+.dash-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.dash-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+}
+
+.dash-recent-item:hover {
+  background: var(--bg-hover);
+}
+
+.dash-recent-item .icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+}
+
+.dash-recent-name {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.dash-recent-path {
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-hint {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 /* Markdown styles */
@@ -1529,7 +1680,7 @@ mark.search-hl.active {
   .hamburger { display: block; }
   .toolbar { display: flex !important; padding: 8px 12px; }
   .toolbar:not(.has-file) .toolbar-actions { display: none; }
-  .toolbar:not(.has-file) .breadcrumb { display: none; }
+  .toolbar:not(.has-file) .breadcrumb { justify-content: flex-start; }
 
   .sidebar {
     position: fixed;
@@ -1572,13 +1723,20 @@ mark.search-hl.active {
 }
 
 /* === Image Preview === */
+.preview:has(.image-preview) {
+  padding: 0;
+  overflow: hidden;
+}
+
 .image-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  height: 100%;
   padding: 24px;
   gap: 16px;
-  overflow: auto;
+  overflow: hidden;
   touch-action: pan-x pan-y;
 }
 .image-preview .image-name {
@@ -1587,13 +1745,13 @@ mark.search-hl.active {
 }
 .image-preview img {
   max-width: 100%;
-  max-height: calc(100vh - 160px);
+  max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg-hover);
   transform: scale(var(--image-zoom, 1));
-  transform-origin: center top;
+  transform-origin: center center;
   transition: transform 0.15s ease;
 }
 

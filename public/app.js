@@ -26,6 +26,7 @@ const LONG_PRESS_MS = 500;
 const scrollPositions = new Map();
 
 const RECENT_KEY = 'rwf-recent';
+const FAVORITES_KEY = 'rwf-favorites';
 const THEME_KEY = 'rwf-theme';
 const SIDEBAR_WIDTH_KEY = 'rwf-sidebar-width';
 const WRAP_KEY = 'rwf-word-wrap';
@@ -125,6 +126,9 @@ const filterCountEl = $('#filterCount');
 const recentFilesEl = $('#recentFiles');
 const recentListEl = $('#recentList');
 const recentClearBtn = $('#recentClear');
+const favoritesSection = $('#favoritesSection');
+const favoritesList = $('#favoritesList');
+const favoritesClearBtn = $('#favoritesClear');
 const btnExpandAll = $('#btnExpandAll');
 const btnCollapseAll = $('#btnCollapseAll');
 const tocEl = $('#toc');
@@ -143,6 +147,7 @@ const contextMenu = $('#contextMenu');
 const ctxDelete = $('#ctxDelete');
 const ctxRename = $('#ctxRename');
 const ctxCopy = $('#ctxCopy');
+const ctxFavorite = $('#ctxFavorite');
 const ctxNewFile = $('#ctxNewFile');
 const ctxNewFolder = $('#ctxNewFolder');
 const airPopupOverlay = $('#airPopupOverlay');
@@ -158,6 +163,9 @@ const saveErrorDismiss = $('#saveErrorDismiss');
 const mdToolbar = $('#mdToolbar');
 const btnWrap = $('#btnWrap');
 const btnFocus = $('#btnFocus');
+const btnImgZoomIn = $('#btnImgZoomIn');
+const btnImgZoomOut = $('#btnImgZoomOut');
+const btnImgZoomReset = $('#btnImgZoomReset');
 const shortcutsOverlay = $('#shortcutsOverlay');
 const shortcutsClose = $('#shortcutsClose');
 const layoutEl = $('.layout');
@@ -411,6 +419,34 @@ function removeRecent(filePath) {
   renderRecent();
 }
 
+function initListItemLongPress(el, onLongPress) {
+  let timer = null;
+  let fired = false;
+  let startX, startY;
+  el.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    fired = false;
+    timer = setTimeout(() => {
+      fired = true; timer = null;
+      onLongPress(t.clientX, t.clientY);
+    }, LONG_PRESS_MS);
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (!timer) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+      clearTimeout(timer); timer = null;
+    }
+  }, { passive: true });
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  el.addEventListener('touchend', cancel, { passive: true });
+  el.addEventListener('touchcancel', cancel, { passive: true });
+  el.addEventListener('click', (e) => {
+    if (fired) { e.stopImmediatePropagation(); e.preventDefault(); fired = false; }
+  }, true);
+}
+
 function renderRecent() {
   const list = getRecent();
   recentListEl.innerHTML = '';
@@ -428,7 +464,66 @@ function renderRecent() {
       const row = getTreeRow(p);
       openFile(p, row);
     });
+    initListItemLongPress(item, (x, y) => showListCtxMenu(x, y, p, 'recent'));
+    item.addEventListener('contextmenu', (e) => { e.preventDefault(); showListCtxMenu(e.clientX, e.clientY, p, 'recent'); });
     recentListEl.appendChild(item);
+  });
+}
+
+/* ============================================================
+   3b. FAVORITES
+   ============================================================ */
+function getFavorites() {
+  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function isFavorite(filePath) {
+  return getFavorites().includes(filePath);
+}
+
+function toggleFavorite(filePath) {
+  let list = getFavorites();
+  if (list.includes(filePath)) {
+    list = list.filter(p => p !== filePath);
+  } else {
+    list.push(filePath);
+  }
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+  renderFavorites();
+}
+
+function removeFavorite(filePath) {
+  const list = getFavorites().filter(p => p !== filePath);
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+  renderFavorites();
+}
+
+function clearFavorites() {
+  localStorage.removeItem(FAVORITES_KEY);
+  renderFavorites();
+}
+
+function renderFavorites() {
+  const list = getFavorites();
+  favoritesList.innerHTML = '';
+  favoritesClearBtn.style.display = list.length ? '' : 'none';
+  if (list.length === 0) {
+    favoritesList.innerHTML = '<div class="favorites-empty">No favorites</div>';
+    return;
+  }
+  list.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'favorite-item';
+    const name = getFileName(p);
+    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
+    item.addEventListener('click', () => {
+      const row = getTreeRow(p);
+      openFile(p, row);
+    });
+    initListItemLongPress(item, (x, y) => showListCtxMenu(x, y, p, 'favorite'));
+    item.addEventListener('contextmenu', (e) => { e.preventDefault(); showListCtxMenu(e.clientX, e.clientY, p, 'favorite'); });
+    favoritesList.appendChild(item);
   });
 }
 
@@ -709,6 +804,17 @@ function countFiles(items) {
   items.forEach(item => {
     if (item.type === 'file') count++;
     else if (item.type === 'dir' && item.children) count += countFiles(item.children);
+  });
+  return count;
+}
+
+function countDirs(items) {
+  let count = 0;
+  items.forEach(item => {
+    if (item.type === 'dir') {
+      count++;
+      if (item.children) count += countDirs(item.children);
+    }
   });
   return count;
 }
@@ -1061,8 +1167,8 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
   currentPath = filePath;
   setDirty(false);
   renderBreadcrumb(filePath);
-  toolbarEl.style.display = 'flex';
   toolbarEl.classList.add('has-file');
+  hideImageZoomButtons();
 
   // Update URL for sharing / history navigation
   if (pushHistory) {
@@ -1169,6 +1275,9 @@ function showContextMenu(e, targetPath, type = 'file') {
   ctxTargetType = type;
   // Show/hide menu items based on type
   const isDir = type === 'dir';
+  const fav = !isDir && isFavorite(targetPath);
+  ctxFavorite.textContent = fav ? '☆ Unfavorite' : '★ Favorite';
+  ctxFavorite.style.display = isDir ? 'none' : '';
   ctxCopy.style.display = isDir ? 'none' : '';
   ctxNewFile.style.display = isDir ? '' : 'none';
   ctxNewFolder.style.display = isDir ? '' : 'none';
@@ -1177,6 +1286,35 @@ function showContextMenu(e, targetPath, type = 'file') {
 }
 
 function closeContextMenu() { ctxMenu.close(); }
+
+/* === List item context menu (recent / favorites) === */
+const listCtxMenuEl = $('#listCtxMenu');
+const listCtxRemove = $('#listCtxRemove');
+let listCtxTarget = null; // { path, type: 'recent' | 'favorite' }
+
+const listCtxMenu = createPopupMenu({
+  containerEl: listCtxMenuEl,
+  onClose() { listCtxTarget = null; }
+});
+
+function showListCtxMenu(x, y, filePath, type) {
+  listCtxTarget = { path: filePath, type };
+  listCtxMenu.show(x, y);
+}
+
+listCtxRemove.addEventListener('click', () => {
+  if (!listCtxTarget) return;
+  const { path, type } = listCtxTarget;
+  const name = getFileName(path);
+  listCtxMenu.close();
+  if (type === 'recent') {
+    removeRecent(path);
+    showToast(`Removed from recent: ${name}`, 'info');
+  } else {
+    removeFavorite(path);
+    showToast(`Removed from favorites: ${name}`, 'info');
+  }
+});
 
 function showWelcomeScreen() {
   if (isEditing) {
@@ -1189,15 +1327,56 @@ function showWelcomeScreen() {
   closeContentSearch();
   hideSaveErrorBanner();
   hideTOC();
+  hideImageZoomButtons();
   setTreeItemActive(null);
   currentPath = null;
   setDirty(false);
-  toolbarEl.style.display = 'none';
   toolbarEl.classList.remove('has-file');
-  previewEl.innerHTML = '<div class="welcome"><h1>\uD83D\uDD0D Remote Web Finder</h1><p>Select a file from the sidebar to view its contents.</p></div>';
+  breadcrumbEl.innerHTML = '<span class="breadcrumb-item current">&#128270; Remote Web Finder</span>';
   document.title = BASE_TITLE;
   statusBar.style.display = 'none';
+
+  // Build dashboard
+  const files = countFiles(treeData);
+  const dirs = countDirs(treeData);
+  const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+
+  let recentHtml = '';
+  if (recent.length > 0) {
+    recentHtml = `<div class="dash-section"><div class="dash-section-title">Recent Files</div>`;
+    for (const p of recent.slice(0, 5)) {
+      const name = getFileName(p);
+      const dir = getDirPath(p);
+      recentHtml += `<div class="dash-recent-item" data-path="${esc(p)}"><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+    }
+    recentHtml += `</div>`;
+  }
+
+  previewEl.innerHTML = `<div class="dashboard">
+    <div class="dash-stats">
+      <div class="dash-stat"><span class="dash-stat-value">${files}</span><span class="dash-stat-label">Files</span></div>
+      <div class="dash-stat"><span class="dash-stat-value">${dirs}</span><span class="dash-stat-label">Folders</span></div>
+    </div>
+    ${recentHtml}
+    <div class="dash-hint">Select a file from the sidebar to view</div>
+  </div>`;
+
+  // Click handler for dashboard recent items
+  previewEl.querySelectorAll('.dash-recent-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const p = el.dataset.path;
+      const row = getTreeRow(p);
+      openFile(p, row);
+    });
+  });
 }
+
+ctxFavorite.addEventListener('click', () => {
+  const target = ctxTargetPath;
+  closeContextMenu();
+  if (!target) return;
+  toggleFavorite(target);
+});
 
 ctxDelete.addEventListener('click', async () => {
   const target = ctxTargetPath;
@@ -1344,17 +1523,32 @@ ctxNewFolder.addEventListener('click', async () => {
 /* ============================================================
    9. PREVIEW + TOC
    ============================================================ */
+function showImageZoomButtons() {
+  btnImgZoomIn.style.display = 'inline-block';
+  btnImgZoomOut.style.display = 'inline-block';
+  btnImgZoomReset.style.display = 'inline-block';
+  btnWrap.style.display = 'none';
+}
+
+function hideImageZoomButtons() {
+  btnImgZoomIn.style.display = 'none';
+  btnImgZoomOut.style.display = 'none';
+  btnImgZoomReset.style.display = 'none';
+  btnWrap.style.display = '';
+}
+
 function showImagePreview(filePath) {
   isEditing = false;
   setDirty(false);
   resetPanelMode();
   setEditButtons(false);
   btnEdit.style.display = 'none'; // image: hide edit too
+  showImageZoomButtons();
   hideTOC();
 
   const src = API.raw(filePath);
   const name = getFileName(filePath);
-  previewEl.innerHTML = `<div class="image-preview"><p class="image-name">${esc(name)}</p><img src="${src}" alt="${esc(name)}" /></div>`;
+  previewEl.innerHTML = `<div class="image-preview"><img src="${src}" alt="${esc(name)}" /></div>`;
   const img = previewEl.querySelector('img');
   if (img) {
     img.onerror = () => {
@@ -2193,6 +2387,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (ctxMenu.isOpen()) { ctxMenu.close(); return; }
+    if (listCtxMenu.isOpen()) { listCtxMenu.close(); return; }
     if (isSaveErrorBannerVisible()) { hideSaveErrorBanner(); return; }
     if (settingsDialog.isOpen()) { settingsDialog.close(); return; }
     if (shortcutsDialog.isOpen()) { shortcutsDialog.close(); return; }
@@ -2338,6 +2533,11 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 btnFocus.addEventListener('click', toggleFocusMode);
+
+// Image zoom header buttons
+btnImgZoomIn.addEventListener('click', () => adjustZoom(0.1));
+btnImgZoomOut.addEventListener('click', () => adjustZoom(-0.1));
+btnImgZoomReset.addEventListener('click', () => adjustZoom(0));
 
 /* ============================================================
    17.7. KEYBOARD SHORTCUTS HELP
@@ -2600,12 +2800,15 @@ function initSectionToggle(headerEl, toggleEl, bodyEl) {
   });
 }
 initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl);
+initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList);
 initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl);
 
 recentClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRecent(); });
+favoritesClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearFavorites(); });
 btnExpandAll.addEventListener('click', (e) => { e.stopPropagation(); expandAllFirstLevel(); });
 btnCollapseAll.addEventListener('click', (e) => { e.stopPropagation(); collapseAll(); });
 await loadTree();
+renderFavorites();
 
 // Set initial history state
 const urlFileParam = new URLSearchParams(window.location.search).get('file');
@@ -2615,6 +2818,8 @@ if (urlFileParam) {
   const row = getTreeRow(urlFileParam);
   if (row) row.scrollIntoView({ block: 'nearest' });
   openFile(urlFileParam, row);
+} else {
+  showWelcomeScreen();
 }
 
 // Browser back/forward navigation

@@ -39,6 +39,13 @@
         </div>
         <div class="recent-list" id="recentList"></div>
       </div>
+      <div class="favorites-section" id="favoritesSection">
+        <div class="section-header" id="favoritesHeader">
+          <span class="section-header-left"><span class="section-toggle" id="favoritesToggle">&#9660;</span><span class="section-title">Favorites</span></span>
+          <div class="section-actions"><button class="section-btn" id="favoritesClear" title="Clear all">✕</button></div>
+        </div>
+        <div class="favorites-list" id="favoritesList"></div>
+      </div>
       <div class="section-header" id="treeHeader">
         <span class="section-header-left"><span class="section-toggle" id="treeToggle">&#9660;</span><span class="section-title">Tree</span></span>
         <div class="section-actions">
@@ -54,17 +61,20 @@
 
     <!-- Main content -->
     <main class="content" id="content">
-      <div class="toolbar" id="toolbar" style="display:none">
+      <div class="toolbar" id="toolbar">
         <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">&#9776;</button>
-        <nav class="breadcrumb" id="breadcrumb"></nav>
+        <nav class="breadcrumb" id="breadcrumb"><span class="breadcrumb-item current">&#128270; Remote Web Finder</span></nav>
         <div class="toolbar-actions">
           <button id="btnWrap" class="btn btn-icon" title="Toggle word wrap">&#8617;</button>
-          <button id="btnFocus" class="btn btn-icon" title="Focus mode (F11)">&#9974;</button>
           <button id="btnSearch" class="btn btn-icon" title="Search in file (Ctrl+F)" style="display:none">&#128269;</button>
+          <button id="btnImgZoomIn" class="btn btn-icon" title="Zoom in" style="display:none">&#43;</button>
+          <button id="btnImgZoomOut" class="btn btn-icon" title="Zoom out" style="display:none">&#8722;</button>
+          <button id="btnImgZoomReset" class="btn btn-icon" title="Reset zoom" style="display:none">&#8634;</button>
           <button id="btnEdit" class="btn btn-icon btn-edit" title="Edit file">&#9998;</button>
           <button id="btnSave" class="btn btn-icon btn-save" title="Save (Ctrl+S)" style="display:none">&#10003;</button>
           <button id="btnCancel" class="btn btn-icon btn-cancel" title="Cancel (Esc)" style="display:none">&#10005;</button>
         </div>
+        <button id="btnFocus" class="btn btn-icon" title="Focus mode (F11)">&#9974;</button>
       </div>
 
       <!-- Save error banner -->
@@ -126,11 +136,17 @@
 
   <!-- Context menu -->
   <div class="context-menu" id="contextMenu" style="display:none">
+    <div class="context-item" id="ctxFavorite">&#9733; Favorite</div>
     <div class="context-item" id="ctxRename">Rename</div>
     <div class="context-item" id="ctxCopy">Copy</div>
     <div class="context-item" id="ctxNewFile">New file</div>
     <div class="context-item" id="ctxNewFolder">New folder</div>
     <div class="context-item danger" id="ctxDelete">Delete</div>
+  </div>
+
+  <!-- List item context menu (recent / favorites) -->
+  <div class="context-menu" id="listCtxMenu" style="display:none">
+    <div class="context-item" id="listCtxRemove">Remove</div>
   </div>
 
   <!-- Air Popup (common dialog) -->
