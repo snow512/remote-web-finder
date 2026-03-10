@@ -34,6 +34,7 @@ const ZOOM_KEY = 'rwf-zoom';
 const IMAGE_ZOOM_KEY = 'rwf-image-zoom';
 const FONT_SIZE_KEY = 'rwf-font-size';
 const DRAFT_PREFIX = 'rwf-draft:';
+const SHOW_IGNORED_KEY = 'rwf-show-ignored';
 const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
@@ -552,7 +553,8 @@ function restoreOpenDirs(paths) {
 async function loadTree() {
   const openPaths = getOpenDirPaths();
   try {
-    const res = await fetch('/api/tree');
+    const showIgnored = localStorage.getItem(SHOW_IGNORED_KEY) === 'true';
+    const res = await fetch('/api/tree' + (showIgnored ? '?showIgnored=true' : ''));
     if (!res.ok) throw new Error('Server error');
     treeData = await res.json();
   } catch (err) {
@@ -579,7 +581,7 @@ function renderTree(items, parentEl, depth) {
       dirEl.dataset.dirpath = item.path;
 
       const row = document.createElement('div');
-      row.className = 'tree-item';
+      row.className = 'tree-item' + (item.ignored ? ' ignored' : '');
       row.style.setProperty('--indent', `${12 + depth * 16}px`);
       const fileCount = countFiles(item.children);
       row.innerHTML = `<span class="icon">&#9654;</span><span class="name" title="${esc(item.path)}">${esc(item.name)}</span><span class="file-count">${fileCount}</span>`;
@@ -637,7 +639,7 @@ function renderTree(items, parentEl, depth) {
       renderTree(item.children, childrenEl, depth + 1);
     } else {
       const row = document.createElement('div');
-      row.className = 'tree-item';
+      row.className = 'tree-item' + (item.ignored ? ' ignored' : '');
       row.style.setProperty('--indent', `${12 + depth * 16}px`);
 
       const icon = getFileIcon(item.name);
@@ -2792,6 +2794,7 @@ const settingsDialog = createModalDialog({
     if (fontDisplay) fontDisplay.textContent = baseFontSize + 'px';
     setSegActive($('#settingsThemeToggle'), getTheme());
     setSegActive($('#settingsWrapToggle'), getWrapPref() ? 'on' : 'off');
+    setSegActive($('#settingsIgnoreToggle'), localStorage.getItem(SHOW_IGNORED_KEY) === 'true' ? 'on' : 'off');
   }
 });
 
@@ -2832,6 +2835,16 @@ $('#settingsWrapToggle')?.addEventListener('click', (e) => {
   if (!btn) return;
   applyWrap(btn.dataset.value === 'on');
   setSegActive($('#settingsWrapToggle'), btn.dataset.value);
+});
+
+// Show ignored files toggle in settings
+$('#settingsIgnoreToggle')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  const show = btn.dataset.value === 'on';
+  localStorage.setItem(SHOW_IGNORED_KEY, show ? 'true' : 'false');
+  setSegActive($('#settingsIgnoreToggle'), btn.dataset.value);
+  loadTree();
 });
 
 /* ============================================================

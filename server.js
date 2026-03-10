@@ -30,9 +30,9 @@ function createApp(docsDir, ignorePatterns) {
     return ignored;
   }
 
-  function buildTree(dirPath, relBase) {
+  function buildTree(dirPath, relBase, showIgnored) {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-      .filter(e => !isIgnored(e.name))
+      .filter(e => showIgnored || !isIgnored(e.name))
       .sort((a, b) => {
         // directories first, then alphabetical
         if (a.isDirectory() && !b.isDirectory()) return -1;
@@ -42,10 +42,11 @@ function createApp(docsDir, ignorePatterns) {
 
     return entries.map(entry => {
       const rel = path.join(relBase, entry.name);
+      const ignored = isIgnored(entry.name);
       if (entry.isDirectory()) {
-        return { name: entry.name, path: rel, type: 'dir', children: buildTree(path.join(dirPath, entry.name), rel) };
+        return { name: entry.name, path: rel, type: 'dir', ignored, children: buildTree(path.join(dirPath, entry.name), rel, showIgnored) };
       }
-      return { name: entry.name, path: rel, type: 'file' };
+      return { name: entry.name, path: rel, type: 'file', ignored };
     });
   }
 
@@ -61,9 +62,10 @@ function createApp(docsDir, ignorePatterns) {
   app.use(express.static(path.join(__dirname, 'public')));
 
   // --- API ---
-  app.get('/api/tree', (_req, res) => {
+  app.get('/api/tree', (req, res) => {
     try {
-      res.json(buildTree(resolvedDir, ''));
+      const showIgnored = req.query.showIgnored === 'true';
+      res.json(buildTree(resolvedDir, '', showIgnored));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

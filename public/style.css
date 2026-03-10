@@ -580,6 +580,9 @@ html, body {
 .tree-item.hidden { display: none; }
 .tree-dir.hidden { display: none; }
 
+.tree-item.ignored { opacity: 0.45; }
+.tree-item.ignored .name { text-decoration: line-through; }
+
 .tree-item .icon {
   font-size: 13px;
   width: 18px;

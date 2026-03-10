@@ -87,6 +87,10 @@ build/
 - Mobile responsive
 - Keyboard shortcuts (press `?` to see all)
 
+## Built With
+
+This project was built with AI assistance (Claude by Anthropic).
+
 ## License
 
 MIT
