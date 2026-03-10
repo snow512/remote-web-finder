@@ -530,7 +530,27 @@ function renderFavorites() {
 /* ============================================================
    4. TREE — build, render, auto-expand
    ============================================================ */
+function getOpenDirPaths() {
+  const paths = [];
+  treeEl.querySelectorAll('.tree-children.open').forEach(ch => {
+    const dirEl = ch.closest('.tree-dir');
+    if (dirEl && dirEl.dataset.dirpath) paths.push(dirEl.dataset.dirpath);
+  });
+  return paths;
+}
+
+function restoreOpenDirs(paths) {
+  const set = new Set(paths);
+  treeEl.querySelectorAll('.tree-dir').forEach(dirEl => {
+    if (set.has(dirEl.dataset.dirpath)) {
+      const ch = dirEl.querySelector(':scope > .tree-children');
+      if (ch) expandDir(ch);
+    }
+  });
+}
+
 async function loadTree() {
+  const openPaths = getOpenDirPaths();
   try {
     const res = await fetch('/api/tree');
     if (!res.ok) throw new Error('Server error');
@@ -542,6 +562,8 @@ async function loadTree() {
   treeEl.innerHTML = '';
   focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
+  // Restore previously open directories
+  if (openPaths.length) restoreOpenDirs(openPaths);
   // Restore active highlight for current file
   if (currentPath) setTreeItemActive(getTreeRow(currentPath));
   renderRecent();
@@ -626,14 +648,16 @@ function renderTree(items, parentEl, depth) {
       row.addEventListener('contextmenu', (e) => showContextMenu(e, item.path));
       initLongPress(row, item.path, 'file');
 
-      // Drag source (files)
-      row.draggable = true;
-      row.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', item.path);
-        e.dataTransfer.effectAllowed = 'move';
-        row.classList.add('dragging');
-      });
-      row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      // Drag source (files) — desktop only
+      if (!('ontouchstart' in window)) {
+        row.draggable = true;
+        row.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', item.path);
+          e.dataTransfer.effectAllowed = 'move';
+          row.classList.add('dragging');
+        });
+        row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      }
 
       parentEl.appendChild(row);
     }
@@ -1281,7 +1305,7 @@ function showContextMenu(e, targetPath, type = 'file') {
   ctxCopy.style.display = isDir ? 'none' : '';
   ctxNewFile.style.display = isDir ? '' : 'none';
   ctxNewFolder.style.display = isDir ? '' : 'none';
-  ctxDelete.style.display = isDir ? 'none' : '';
+  ctxDelete.style.display = '';
   ctxMenu.show(e.clientX, e.clientY);
 }
 
@@ -1380,19 +1404,25 @@ ctxFavorite.addEventListener('click', () => {
 
 ctxDelete.addEventListener('click', async () => {
   const target = ctxTargetPath;
+  const type = ctxTargetType;
   closeContextMenu();
   if (!target) return;
-  if (!(await airConfirm(`Delete "${target}"?`, { okText: 'Delete', danger: true }))) return;
+
+  const label = type === 'dir' ? 'folder' : 'file';
+  if (!(await airConfirm(`Delete ${label} "${target}"?`, { okText: 'Delete', danger: true }))) return;
 
   try {
-    const res = await fetch(API.file(target), { method: 'DELETE' });
+    const endpoint = type === 'dir' ? API.folder(target) : API.file(target);
+    const res = await fetch(endpoint, { method: 'DELETE' });
     await throwIfNotOk(res);
     showToast(`Deleted: ${target}`, 'success');
-    removeRecent(target);
-    clearDraft(target);
-    if (currentPath === target) {
-      showWelcomeScreen();
-      updateFileUrl(null);
+    if (type === 'file') {
+      removeRecent(target);
+      clearDraft(target);
+      if (currentPath === target) {
+        showWelcomeScreen();
+        updateFileUrl(null);
+      }
     }
     await loadTree();
   } catch (err) {
@@ -2760,10 +2790,8 @@ const settingsDialog = createModalDialog({
   onOpen() {
     const fontDisplay = $('#settingsFontSizeValue');
     if (fontDisplay) fontDisplay.textContent = baseFontSize + 'px';
-    const themeVal = $('#settingsThemeValue');
-    if (themeVal) themeVal.textContent = getTheme() === 'dark' ? 'Dark' : 'Light';
-    const wrapVal = $('#settingsWrapValue');
-    if (wrapVal) wrapVal.textContent = getWrapPref() ? 'ON' : 'OFF';
+    setSegActive($('#settingsThemeToggle'), getTheme());
+    setSegActive($('#settingsWrapToggle'), getWrapPref() ? 'on' : 'off');
   }
 });
 
@@ -2782,20 +2810,28 @@ $('#settingsFontDec')?.addEventListener('click', () => {
   applyFontSize();
 });
 
+// Segmented toggle helper
+function setSegActive(container, value) {
+  if (!container) return;
+  container.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
 // Theme toggle in settings
-$('#settingsThemeToggle')?.addEventListener('click', () => {
-  const next = getTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  const themeVal = $('#settingsThemeValue');
-  if (themeVal) themeVal.textContent = next === 'dark' ? 'Dark' : 'Light';
+$('#settingsThemeToggle')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  applyTheme(btn.dataset.value);
+  setSegActive($('#settingsThemeToggle'), btn.dataset.value);
 });
 
 // Wrap toggle in settings
-$('#settingsWrapToggle')?.addEventListener('click', () => {
-  const next = !getWrapPref();
-  applyWrap(next);
-  const wrapVal = $('#settingsWrapValue');
-  if (wrapVal) wrapVal.textContent = next ? 'ON' : 'OFF';
+$('#settingsWrapToggle')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  applyWrap(btn.dataset.value === 'on');
+  setSegActive($('#settingsWrapToggle'), btn.dataset.value);
 });
 
 /* ============================================================

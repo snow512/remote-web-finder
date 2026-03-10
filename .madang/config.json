@@ -1,0 +1,17 @@
+{
+  "categories": [
+    "convention",
+    "decision",
+    "issue",
+    "requirement",
+    "spec",
+    "ticket",
+    "ui",
+    "workspace"
+  ],
+  "language": {
+    "documents": "English",
+    "commits": "English",
+    "conversation": "한국어"
+  }
+}
