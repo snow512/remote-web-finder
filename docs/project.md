@@ -74,15 +74,27 @@ remote-web-finder/
 ├── server.test.js        → Test file
 ├── package.json          → bin: rwf, remote-web-finder
 ├── public/               → Static files (client)
+│   ├── index.html        → Main HTML
+│   ├── app.js            → Client application logic
+│   └── style.css         → Styles
 ├── .rwfignore            → File exclusion rules
+├── .madang/              → Madang project management system
+│   ├── config.json       → Active categories & language preferences
+│   └── categories/       → Category governance rules
 ├── docs/                 → Documentation
 │   ├── project.md        → This file (project summary)
 │   ├── specs/            → Design documents
 │   ├── tasks/            → Task management
 │   ├── issues/           → Issue tracking
-│   └── decisions.md      → Architecture decisions
-├── CLAUDE.md             → Claude task management (entrypoint)
-└── project-init.md       → Project initialization guide
+│   ├── decisions/        → Architecture decisions (ADR)
+│   ├── features/         → Feature documents
+│   ├── groups/           → Kanban groups (Plan/Todo/Doing/Done)
+│   ├── conventions/      → Code conventions
+│   ├── requirements/     → Requirements
+│   ├── ui/               → UI design (wireframes, styles, components)
+│   ├── workspaces/       → Multi-clone workspace management
+│   └── user-manual.md    → Madang usage guide
+└── CLAUDE.md             → Claude task management (entrypoint)
 ```
 
 ---
