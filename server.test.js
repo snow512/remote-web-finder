@@ -349,6 +349,14 @@ describe('API endpoints', () => {
       expect(res.body.error).toMatch(/not empty/i);
     });
 
+    test('returns 400 when target is a file, not a directory', async () => {
+      const res = await request(app)
+        .delete('/api/folder')
+        .query({ path: 'hello.md' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/not a directory/i);
+    });
+
     test('returns 404 for missing folder', async () => {
       const res = await request(app)
         .delete('/api/folder')
@@ -361,6 +369,49 @@ describe('API endpoints', () => {
         .delete('/api/folder')
         .query({ path: '../escape-dir' });
       expect(res.status).toBe(400);
+    });
+  });
+
+  // --- HEAD /api/file ---
+  describe('HEAD /api/file', () => {
+    test('returns Content-Length for existing file', async () => {
+      const res = await request(app)
+        .head('/api/file')
+        .query({ path: 'hello.md' });
+      expect(res.status).toBe(200);
+      expect(Number(res.headers['content-length'])).toBeGreaterThan(0);
+    });
+
+    test('returns 404 for missing file', async () => {
+      const res = await request(app)
+        .head('/api/file')
+        .query({ path: 'nope.md' });
+      expect(res.status).toBe(404);
+    });
+
+    test('returns 400 for path traversal', async () => {
+      const res = await request(app)
+        .head('/api/file')
+        .query({ path: '../../../etc/passwd' });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // --- PATCH /api/rename (additional cases) ---
+  describe('PATCH /api/rename (additional)', () => {
+    test('creates parent directory on rename if needed', async () => {
+      const res = await request(app)
+        .patch('/api/rename')
+        .query({ path: 'hello.md', newPath: 'new-dir/hello.md' });
+      expect(res.status).toBe(200);
+      expect(fs.existsSync(path.join(tmpDir, 'new-dir', 'hello.md'))).toBe(true);
+    });
+
+    test('returns 404 for non-existent source in nested rename', async () => {
+      const res = await request(app)
+        .patch('/api/rename')
+        .query({ path: 'no/such/file.md', newPath: 'other.md' });
+      expect(res.status).toBe(404);
     });
   });
 
