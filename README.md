@@ -12,51 +12,50 @@ npx remote-web-finder
 
 # Or install globally
 npm i -g remote-web-finder
-remote-web-finder
+rwf
 ```
 
-### Options
+## CLI Options
 
 ```
---dir <path>    Directory to serve (default: current directory)
---port <number> Port number (default: 5999)
---ignore <file> Custom ignore file (default: .rwfignore)
---open          Open browser automatically
---bg            Run in background (daemon mode)
---shutdown      Stop existing remote-web-finder on the same port
---help          Show help
---version       Show version
+-d, --dir <path>    Directory to serve (default: . | env: DIR)
+-p, --port <number> Port number (default: 5999 | env: PORT)
+-b, --bg            Run in background (daemon mode | env: BG=true)
+-h, --help          Show this help
+-v, --version       Show version
 ```
 
 ### Examples
 
 ```bash
-# Serve current directory
+# Serve current directory on default port (5999)
 npx remote-web-finder
 
-# Serve a specific docs folder on port 3000
-npx remote-web-finder --dir ./docs --port 3000
-
-# Open browser automatically
-npx remote-web-finder --dir ./docs --open
-
-# Use custom ignore file
-npx remote-web-finder --ignore ./my-ignore
+# Serve a specific folder on port 3000
+npx remote-web-finder -d ./docs -p 3000
 
 # Run in background
-npx remote-web-finder --dir ./docs --bg
-
-# Stop existing process
-remote-web-finder --shutdown
+npx remote-web-finder -d ./docs -b
 ```
+
+## Environment Variables
+
+Create a `.env` file in the project root to set defaults:
+
+```env
+PORT=5999
+DIR=.
+BG=true
+```
+
+CLI options take precedence over `.env` values.
 
 ## Ignore File
 
 Remote Web Finder uses `.rwfignore` to filter the file tree. Lookup order:
 
-1. `--ignore <file>` (CLI option)
-2. `.rwfignore` in the served directory (`--dir`)
-3. Built-in default (ships with the package)
+1. `.rwfignore` in the served directory (`--dir`)
+2. `.rwfignore` in the package directory (built-in default)
 
 Syntax is gitignore-style:
 
@@ -69,6 +68,8 @@ build/
 !important.log    # negate — re-include
 ```
 
+You can also toggle ignored file visibility from **Settings > Show Ignored Files** in the web UI.
+
 ## Features
 
 - Directory tree navigation with file count badges
@@ -79,17 +80,41 @@ build/
 - Internal link navigation (relative path click → file open)
 - Table creation tool (rows × columns)
 - File & folder create / rename / delete
+- Drag & drop file move
 - Editor draft auto-save (restore after refresh)
 - Scroll position memory per file
+- Recent files & favorites
+- Filter presets for file tree
+- Show/hide ignored files toggle
 - Focus mode (F11)
 - Font zoom (Ctrl +/-/0)
 - Dark mode support
 - Mobile responsive
 - Keyboard shortcuts (press `?` to see all)
 
-## Built With
+## API
 
-This project was built with AI assistance (Claude by Anthropic).
+All endpoints operate on the directory specified by `--dir`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tree` | File tree (JSON). `?showIgnored=true` to include ignored files |
+| GET | `/api/file?path=` | Read file content (UTF-8) |
+| HEAD | `/api/file?path=` | File metadata (Content-Length) |
+| GET | `/api/raw?path=` | Raw file download |
+| PUT | `/api/file?path=` | Update file content |
+| POST | `/api/file?path=` | Create new file |
+| DELETE | `/api/file?path=` | Delete file |
+| POST | `/api/folder?path=` | Create folder |
+| DELETE | `/api/folder?path=` | Delete empty folder |
+| PATCH | `/api/rename?path=&newPath=` | Rename / move file or folder |
+
+## Tech Stack
+
+- **Runtime:** Node.js (>=16)
+- **Server:** Express 4
+- **Client:** Vanilla HTML/CSS/JS (no build step)
+- **Test:** Jest + Supertest
 
 ## License
 

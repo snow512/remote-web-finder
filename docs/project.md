@@ -27,34 +27,41 @@ See individual documents in `docs/specs/` for detailed specifications.
 
 ## How to Run
 
-### CLI (Global Install)
+### CLI
 ```bash
-npm install -g .          # Global install
-rwf                       # Default run (port 5999)
-rwf -p 6999               # Specify port
-rwf -d /path/to/docs      # Specify directory
-rwf --open                # Auto-open browser
-rwf -b                    # Background mode
-rwf --shutdown            # Stop server
+# Run directly
+npx remote-web-finder
+
+# Global install
+npm i -g remote-web-finder
+rwf
 ```
 
-### Development Mode
+### Development
 ```bash
 npm start                 # Start server (port 5999)
 npm test                  # Run tests
 ```
 
 ### CLI Options
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-d, --dir <path>` | Directory to serve | `.` (current directory) |
-| `-p, --port <number>` | Port number | `5999` |
-| `--ignore <file>` | Custom ignore file | `.rwfignore` |
-| `--open` | Auto-open browser | off |
-| `-b, --bg` | Background daemon mode | off |
-| `--shutdown` | Stop existing server on same port | - |
-| `-h, --help` | Help | - |
-| `-v, --version` | Show version | - |
+
+| Option | Description | Default | Env |
+|--------|-------------|---------|-----|
+| `-d, --dir <path>` | Directory to serve | `.` | `DIR` |
+| `-p, --port <number>` | Port number | `5999` | `PORT` |
+| `-b, --bg` | Background daemon mode | off | `BG=true` |
+| `-h, --help` | Show help | - | - |
+| `-v, --version` | Show version | - | - |
+
+Priority: CLI option > `.env` > default value
+
+### Environment Variables (.env)
+
+```env
+PORT=5999
+DIR=.
+BG=true
+```
 
 ---
 
@@ -62,7 +69,7 @@ npm test                  # Run tests
 
 | Purpose | Port | Notes |
 |---------|------|-------|
-| Default port | **5999** | Changeable via `-p` option |
+| Default port | **5999** | Configurable via `-p` option or `PORT` env |
 
 ---
 
@@ -73,29 +80,36 @@ remote-web-finder/
 ├── server.js             → Express server main file (CLI entrypoint)
 ├── server.test.js        → Test file
 ├── package.json          → bin: rwf, remote-web-finder
+├── .rwfignore            → File exclusion rules
+├── .env                  → Environment variables (optional)
 ├── public/               → Static files (client)
 │   ├── index.html        → Main HTML
 │   ├── app.js            → Client application logic
 │   └── style.css         → Styles
-├── .rwfignore            → File exclusion rules
-├── .madang/              → Madang project management system
-│   ├── config.json       → Active categories & language preferences
-│   └── categories/       → Category governance rules
-├── docs/                 → Documentation
-│   ├── project.md        → This file (project summary)
-│   ├── specs/            → Design documents
-│   ├── tasks/            → Task management
-│   ├── issues/           → Issue tracking
-│   ├── decisions/        → Architecture decisions (ADR)
-│   ├── features/         → Feature documents
-│   ├── groups/           → Kanban groups (Plan/Todo/Doing/Done)
-│   ├── conventions/      → Code conventions
-│   ├── requirements/     → Requirements
-│   ├── ui/               → UI design (wireframes, styles, components)
-│   ├── workspaces/       → Multi-clone workspace management
-│   └── user-manual.md    → Madang usage guide
-└── CLAUDE.md             → Claude task management (entrypoint)
+└── docs/                 → Documentation
+    ├── project.md        → This file (project summary)
+    ├── specs/            → Design documents
+    ├── tasks/            → Task management
+    ├── issues/           → Issue tracking
+    └── decisions/        → Architecture decisions (ADR)
 ```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tree` | File tree JSON. `?showIgnored=true` to include ignored files |
+| GET | `/api/file?path=` | Read file content |
+| HEAD | `/api/file?path=` | File metadata |
+| GET | `/api/raw?path=` | Raw file download |
+| PUT | `/api/file?path=` | Update file |
+| POST | `/api/file?path=` | Create file |
+| DELETE | `/api/file?path=` | Delete file |
+| POST | `/api/folder?path=` | Create folder |
+| DELETE | `/api/folder?path=` | Delete empty folder |
+| PATCH | `/api/rename?path=&newPath=` | Rename / move |
 
 ---
 

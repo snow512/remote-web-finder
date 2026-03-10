@@ -216,11 +216,16 @@ Usage:
   npx remote-web-finder [options]
 
 Options:
-  -d, --dir <path>    Directory to serve (default: .)
-  -p, --port <number> Port number (default: 5999)
-  -b, --bg            Run in background (daemon mode)
+  -d, --dir <path>    Directory to serve (default: . | env: DIR)
+  -p, --port <number> Port number (default: 5999 | env: PORT)
+  -b, --bg            Run in background (daemon mode | env: BG=true)
   -h, --help          Show this help
   -v, --version       Show version
+
+Environment variables (.env):
+  PORT   Port number (default: 5999)
+  DIR    Directory to serve (default: .)
+  BG     Run in background when "true"
 
 Ignore files:
   Place a .rwfignore file in the served directory to customize
@@ -246,9 +251,11 @@ Ignore files:
   }
 
   const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10);
+  const DIR_ARG = getArg(['-d', '--dir'], process.env.DIR || '.');
+  const isBg = hasFlag(['-b', '--bg']) || process.env.BG === 'true';
 
   // --bg: re-spawn as detached background process
-  if (hasFlag(['-b', '--bg']) && !process.env.__RWF_BG) {
+  if (isBg && !process.env.__RWF_BG) {
     const { spawn } = require('child_process');
     const filteredArgs = args.filter(a => a !== '--bg' && a !== '-b');
     const child = spawn(process.execPath, [__filename, ...filteredArgs], {
@@ -257,14 +264,14 @@ Ignore files:
       env: { ...process.env, __RWF_BG: '1' },
     });
     child.unref();
-    const dir = path.resolve(getArg(['-d', '--dir'], '.'));
+    const dir = path.resolve(DIR_ARG);
     console.log(`Remote Web Finder started in background (PID: ${child.pid})`);
     console.log(`  http://localhost:${PORT}  →  ${dir}`);
     console.log(`  Stop: kill ${child.pid}`);
     process.exit(0);
   }
 
-  const DOCS_DIR = path.resolve(getArg(['-d', '--dir'], '.'));
+  const DOCS_DIR = path.resolve(DIR_ARG);
 
   if (!fs.existsSync(DOCS_DIR)) {
     console.error(`Error: directory not found: ${DOCS_DIR}`);
