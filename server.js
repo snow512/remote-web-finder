@@ -352,16 +352,17 @@ Ignore files:
     return [];
   }
 
+  // Write PID file immediately for background mode (before listen)
+  if (process.env.__RWF_BG) {
+    fs.writeFileSync(PID_FILE, String(process.pid));
+  }
+
   const ignorePatterns = loadIgnorePatterns();
   const app = createApp(DOCS_DIR, ignorePatterns);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Remote Web Finder running at http://localhost:${PORT}`);
     console.log(`Serving docs from: ${DOCS_DIR}`);
-    // Write PID file for background mode
-    if (process.env.__RWF_BG) {
-      fs.writeFileSync(PID_FILE, String(process.pid));
-    }
   });
 
   // Clean up PID file on exit
