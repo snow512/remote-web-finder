@@ -35,6 +35,8 @@ const IMAGE_ZOOM_KEY = 'rwf-image-zoom';
 const FONT_SIZE_KEY = 'rwf-font-size';
 const DRAFT_PREFIX = 'rwf-draft:';
 const SHOW_IGNORED_KEY = 'rwf-show-ignored';
+const OPEN_DIRS_KEY = 'rwf-open-dirs';
+const SECTIONS_KEY = 'rwf-sections-collapsed';
 const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
@@ -564,8 +566,10 @@ async function loadTree() {
   treeEl.innerHTML = '';
   focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
-  // Restore previously open directories
-  if (openPaths.length) restoreOpenDirs(openPaths);
+  // Restore previously open directories (in-memory first, then localStorage)
+  const dirsToRestore = openPaths.length ? openPaths
+    : JSON.parse(localStorage.getItem(OPEN_DIRS_KEY) || '[]');
+  if (dirsToRestore.length) restoreOpenDirs(dirsToRestore);
   // Restore active highlight for current file
   if (currentPath) setTreeItemActive(getTreeRow(currentPath));
   renderRecent();
@@ -666,9 +670,14 @@ function renderTree(items, parentEl, depth) {
   });
 }
 
+function saveOpenDirs() {
+  localStorage.setItem(OPEN_DIRS_KEY, JSON.stringify(getOpenDirPaths()));
+}
+
 function toggleDir(row, childrenEl) {
   const isOpen = childrenEl.classList.toggle('open');
   row.querySelector('.icon').innerHTML = isOpen ? '&#9660;' : '&#9654;';
+  saveOpenDirs();
 }
 
 function expandDir(childrenEl) {
@@ -700,6 +709,7 @@ function autoExpandDepth(maxDepth) {
 
 function collapseAll() {
   treeEl.querySelectorAll('.tree-children.open').forEach(ch => collapseDir(ch));
+  saveOpenDirs();
 }
 
 function expandAllFirstLevel() {
@@ -707,6 +717,7 @@ function expandAllFirstLevel() {
   treeEl.querySelectorAll(':scope > .tree-dir > .tree-children').forEach(ch => {
     expandDir(ch);
   });
+  saveOpenDirs();
 }
 
 
@@ -721,6 +732,7 @@ function expandPathTo(filePath) {
       if (ch) expandDir(ch);
     }
   }
+  saveOpenDirs();
 }
 
 /* === Marquee scroll helpers === */
@@ -2850,17 +2862,34 @@ $('#settingsIgnoreToggle')?.addEventListener('click', (e) => {
 /* ============================================================
    BOOT
    ============================================================ */
-// Section header toggle (common behavior)
-function initSectionToggle(headerEl, toggleEl, bodyEl) {
+// Section header toggle (common behavior) with localStorage persistence
+function getSectionCollapsed() {
+  return JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}');
+}
+
+function saveSectionCollapsed(sectionId, collapsed) {
+  const state = getSectionCollapsed();
+  state[sectionId] = collapsed;
+  localStorage.setItem(SECTIONS_KEY, JSON.stringify(state));
+}
+
+function initSectionToggle(headerEl, toggleEl, bodyEl, sectionId) {
+  // Restore persisted state
+  const state = getSectionCollapsed();
+  if (state[sectionId]) {
+    toggleEl.classList.add('collapsed');
+    bodyEl.classList.add('collapsed');
+  }
   headerEl.addEventListener('click', (e) => {
     if (e.target.closest('.section-btn')) return;
     toggleEl.classList.toggle('collapsed');
     bodyEl.classList.toggle('collapsed');
+    saveSectionCollapsed(sectionId, toggleEl.classList.contains('collapsed'));
   });
 }
-initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl);
-initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList);
-initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl);
+initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl, 'recent');
+initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList, 'favorites');
+initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl, 'tree');
 
 recentClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRecent(); });
 favoritesClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearFavorites(); });
