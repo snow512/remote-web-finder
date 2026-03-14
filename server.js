@@ -44,7 +44,9 @@ function createApp(docsDir, ignorePatterns) {
       const rel = path.join(relBase, entry.name);
       const ignored = isIgnored(entry.name);
       if (entry.isDirectory()) {
-        return { name: entry.name, path: rel, type: 'dir', ignored, children: buildTree(path.join(dirPath, entry.name), rel, showIgnored) };
+        let children = [];
+        try { children = buildTree(path.join(dirPath, entry.name), rel, showIgnored); } catch { /* skip inaccessible dirs */ }
+        return { name: entry.name, path: rel, type: 'dir', ignored, children };
       }
       return { name: entry.name, path: rel, type: 'file', ignored };
     });
@@ -129,7 +131,7 @@ function createApp(docsDir, ignorePatterns) {
     try {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, req.body || '', 'utf-8');
+      fs.writeFileSync(filePath, req.body ?? '', 'utf-8');
       res.json({ ok: true });
     } catch (err) {
       console.error('POST /api/file error:', err);
@@ -192,7 +194,7 @@ function createApp(docsDir, ignorePatterns) {
       if (!stat.isDirectory()) return res.status(400).json({ error: 'Not a directory' });
       const entries = fs.readdirSync(folderPath);
       if (entries.length > 0) return res.status(400).json({ error: 'Folder is not empty' });
-      fs.rmdirSync(folderPath);
+      fs.rmSync(folderPath, { recursive: true });
       res.json({ ok: true });
     } catch (err) {
       console.error('DELETE /api/folder error:', err);

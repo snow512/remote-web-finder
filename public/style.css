@@ -654,7 +654,6 @@ html, body {
 }
 
 .custom-filter-panel-actions .section-btn {
-  font-size: 10px;
   padding: 1px 4px;
 }
 
@@ -1335,6 +1334,8 @@ mark.search-hl.active {
 .dash-recent-name {
   color: var(--text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-recent-path {

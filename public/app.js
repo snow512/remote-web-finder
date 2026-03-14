@@ -295,15 +295,19 @@ function airError(title, errorMsg) {
     const copyBtn = document.createElement('button');
     copyBtn.className = 'dialog-copy-btn';
     copyBtn.textContent = 'Copy';
-    copyBtn.onclick = () => {
+    copyBtn.onclick = async () => {
       const text = errorMsg || '';
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       copyBtn.textContent = 'Copied!';
       setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
     };
@@ -2968,13 +2972,13 @@ function saveCustomFilters(filters) {
   localStorage.setItem(CUSTOM_FILTERS_KEY, JSON.stringify(filters));
 }
 
-function collectFiles(items, basePath) {
+function collectFiles(items) {
   const result = [];
   for (const item of items) {
     if (item.type === 'file') {
       result.push(item);
     } else if (item.type === 'dir' && item.children) {
-      result.push(...collectFiles(item.children, item.path));
+      result.push(...collectFiles(item.children));
     }
   }
   return result;
@@ -3051,7 +3055,7 @@ function renderCustomFilterPanel(filter, index) {
   const q = searchInput.value.trim();
   const byPattern = subtree ? filterByPattern(subtree, filter.pattern) : [];
   const items = filterByQuery(byPattern, q);
-  const allFiles = collectFiles(items, '');
+  const allFiles = collectFiles(items);
   const count = allFiles.length;
   const label = (filter.folder || '/') + (filter.pattern ? ` (${filter.pattern})` : '');
 
