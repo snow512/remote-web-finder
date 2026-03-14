@@ -1407,6 +1407,7 @@ mark.search-hl.active {
 }
 
 .preview pre, .live-preview pre {
+  position: relative;
   background: var(--pre-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1574,7 +1575,7 @@ mark.search-hl.active {
 .live-preview {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 24px;
+  padding: 24px;
   line-height: 1.7;
   border-left: 1px solid var(--border);
   min-width: 0;
@@ -1817,10 +1818,6 @@ mark.search-hl.active {
 }
 
 /* === Code block copy button === */
-.preview pre, .live-preview pre {
-  position: relative;
-}
-
 .code-copy-btn {
   position: absolute;
   top: 6px;

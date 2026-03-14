@@ -254,6 +254,10 @@ marked.use({
       const safeText = (text || '').replace(/"/g, '&quot;');
       const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
       return `<img src="${safeHref}" alt="${safeText}"${titleAttr} loading="lazy">`;
+    },
+    // Sanitize: strip <script> tags from rendered HTML
+    html({ text }) {
+      return text.replace(/<script[\s>][\s\S]*?<\/script>/gi, '');
     }
   }
 });
@@ -578,7 +582,7 @@ async function loadTree() {
   renderTree(treeData, treeEl, 0);
   // Restore previously open directories (in-memory first, then localStorage)
   const dirsToRestore = openPaths.length ? openPaths
-    : JSON.parse(localStorage.getItem(OPEN_DIRS_KEY) || '[]');
+    : (() => { try { return JSON.parse(localStorage.getItem(OPEN_DIRS_KEY) || '[]'); } catch { return []; } })();
   if (dirsToRestore.length) restoreOpenDirs(dirsToRestore);
   // Restore active highlight for current file
   if (currentPath) setTreeItemActive(getTreeRow(currentPath));
@@ -1271,6 +1275,7 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
     }
   } catch (e) {
     if (e.name === 'AbortError') return;
+    console.warn('HEAD request failed:', e);
   }
 
   try {
@@ -1285,7 +1290,9 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
         }
         throw new Error('File not found (may have been deleted)');
       }
-      throw new Error(await res.text());
+      const errText = await res.text();
+      if (signal.aborted) return;
+      throw new Error(errText);
     }
     const text = await res.text();
     originalContent = text;
@@ -3344,7 +3351,7 @@ customFilterAdd.addEventListener('click', async (e) => {
    ============================================================ */
 // Section header toggle (common behavior) with localStorage persistence
 function getSectionCollapsed() {
-  return JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}');
+  try { return JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}'); } catch { return {}; }
 }
 
 function saveSectionCollapsed(sectionId, collapsed) {

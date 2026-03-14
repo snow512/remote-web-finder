@@ -67,6 +67,7 @@ function createApp(docsDir, ignorePatterns) {
       const showIgnored = req.query.showIgnored === 'true';
       res.json(buildTree(resolvedDir, '', showIgnored));
     } catch (err) {
+      console.error('GET /api/tree error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -86,6 +87,7 @@ function createApp(docsDir, ignorePatterns) {
     try {
       res.type('text/plain').send(fs.readFileSync(filePath, 'utf-8'));
     } catch (err) {
+      console.error('GET /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -97,6 +99,7 @@ function createApp(docsDir, ignorePatterns) {
     try {
       res.sendFile(filePath);
     } catch (err) {
+      console.error('GET /api/raw error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -105,9 +108,12 @@ function createApp(docsDir, ignorePatterns) {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     try {
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(filePath, req.body, 'utf-8');
       res.json({ ok: true });
     } catch (err) {
+      console.error('PUT /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -122,6 +128,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.writeFileSync(filePath, req.body || '', 'utf-8');
       res.json({ ok: true });
     } catch (err) {
+      console.error('POST /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -134,6 +141,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.unlinkSync(filePath);
       res.json({ ok: true });
     } catch (err) {
+      console.error('DELETE /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -147,6 +155,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.mkdirSync(folderPath, { recursive: true });
       res.json({ ok: true });
     } catch (err) {
+      console.error('POST /api/folder error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -164,6 +173,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.renameSync(oldPath, newPath);
       res.json({ ok: true });
     } catch (err) {
+      console.error('PATCH /api/rename error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -180,6 +190,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.rmdirSync(folderPath);
       res.json({ ok: true });
     } catch (err) {
+      console.error('DELETE /api/folder error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -250,7 +261,7 @@ Ignore files:
     });
   }
 
-  const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10);
+  const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10) || 5999;
   const DIR_ARG = getArg(['-d', '--dir'], process.env.DIR || '.');
   const isBg = hasFlag(['-b', '--bg']) || process.env.BG === 'true';
 
