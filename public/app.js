@@ -37,6 +37,7 @@ const DRAFT_PREFIX = 'rwf-draft:';
 const SHOW_IGNORED_KEY = 'rwf-show-ignored';
 const OPEN_DIRS_KEY = 'rwf-open-dirs';
 const SECTIONS_KEY = 'rwf-sections-collapsed';
+const CUSTOM_FILTERS_KEY = 'rwf-custom-filters';
 const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
@@ -149,6 +150,7 @@ const resizeHandle = $('#resizeHandle');
 const contextMenu = $('#contextMenu');
 const ctxDelete = $('#ctxDelete');
 const ctxRename = $('#ctxRename');
+const ctxMove = $('#ctxMove');
 const ctxCopy = $('#ctxCopy');
 const ctxFavorite = $('#ctxFavorite');
 const ctxNewFile = $('#ctxNewFile');
@@ -462,7 +464,11 @@ function renderRecent() {
     const item = document.createElement('div');
     item.className = 'recent-item';
     const name = getFileName(p);
-    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
+    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
+    item.querySelector('.list-item-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeRecent(p);
+    });
     item.addEventListener('click', () => {
       const row = getTreeRow(p);
       openFile(p, row);
@@ -519,7 +525,11 @@ function renderFavorites() {
     const item = document.createElement('div');
     item.className = 'favorite-item';
     const name = getFileName(p);
-    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
+    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
+    item.querySelector('.list-item-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFavorite(p);
+    });
     item.addEventListener('click', () => {
       const row = getTreeRow(p);
       openFile(p, row);
@@ -575,6 +585,8 @@ async function loadTree() {
   renderRecent();
   // Reapply active filter after tree rebuild
   applyFilter();
+  // Refresh custom filter panels
+  if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
 }
 
 function renderTree(items, parentEl, depth) {
@@ -860,12 +872,26 @@ function countDirs(items) {
 /* ============================================================
    5. SEARCH / FILTER (sidebar)
    ============================================================ */
+const searchClear = $('#searchClear');
+
+function updateSearchClear() {
+  searchClear.style.display = searchInput.value ? '' : 'none';
+}
+
 searchInput.addEventListener('input', () => {
+  updateSearchClear();
   applyFilter();
 });
 
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  updateSearchClear();
+  applyFilter();
+  searchInput.focus();
+});
+
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { e.stopPropagation(); searchInput.value = ''; applyFilter(); searchInput.blur(); }
+  if (e.key === 'Escape') { e.stopPropagation(); searchInput.value = ''; updateSearchClear(); applyFilter(); searchInput.blur(); }
 });
 
 // --- Filter presets ---
@@ -1071,6 +1097,7 @@ function applyFilter() {
     filterCountEl.classList.remove('visible', 'no-matches');
     filterCountEl.textContent = '';
     searchInput.classList.remove('no-matches');
+    if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
     return;
   }
   const exts = activePreset ? activePreset.exts.split(/\s+/).filter(Boolean) : null;
@@ -1083,6 +1110,7 @@ function applyFilter() {
   filterCountEl.classList.add('visible');
   filterCountEl.classList.toggle('no-matches', visibleFiles === 0);
   searchInput.classList.toggle('no-matches', visibleFiles === 0);
+  if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
 }
 
 function filterTree(container, query, exts) {
@@ -1390,16 +1418,29 @@ function showWelcomeScreen() {
     recentHtml += `</div>`;
   }
 
+  const favs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+  let favsHtml = '';
+  if (favs.length > 0) {
+    favsHtml = `<div class="dash-section"><div class="dash-section-title">Favorites</div>`;
+    for (const p of favs) {
+      const name = getFileName(p);
+      const dir = getDirPath(p);
+      favsHtml += `<div class="dash-recent-item" data-path="${esc(p)}"><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+    }
+    favsHtml += `</div>`;
+  }
+
   previewEl.innerHTML = `<div class="dashboard">
     <div class="dash-stats">
       <div class="dash-stat"><span class="dash-stat-value">${files}</span><span class="dash-stat-label">Files</span></div>
       <div class="dash-stat"><span class="dash-stat-value">${dirs}</span><span class="dash-stat-label">Folders</span></div>
     </div>
+    ${favsHtml}
     ${recentHtml}
     <div class="dash-hint">Select a file from the sidebar to view</div>
   </div>`;
 
-  // Click handler for dashboard recent items
+  // Click handler for dashboard items (recent + favorites)
   previewEl.querySelectorAll('.dash-recent-item').forEach(el => {
     el.addEventListener('click', () => {
       const p = el.dataset.path;
@@ -1484,6 +1525,48 @@ ctxRename.addEventListener('click', async () => {
     await refreshTreeAndSelect(currentPath);
   } catch (err) {
     airError('Rename failed', err.message);
+  }
+});
+
+ctxMove.addEventListener('click', async () => {
+  const target = ctxTargetPath;
+  const type = ctxTargetType;
+  closeContextMenu();
+  if (!target) return;
+
+  const name = getFileName(target);
+  const currentDir = getDirName(target);
+  const destDir = await airPrompt('Move to folder:', currentDir);
+  if (destDir == null || destDir === currentDir) return;
+
+  const newPath = destDir ? destDir + '/' + name : name;
+  try {
+    const res = await fetch(API.rename(target, newPath), { method: 'PATCH' });
+    await throwIfNotOk(res);
+    showToast(`Moved: ${name} → ${destDir || '/'}`, 'success');
+
+    if (type === 'file') {
+      removeRecent(target);
+      if (currentPath === target) {
+        clearDraft(target);
+        currentPath = newPath;
+        if (isEditing && isDirty) saveDraft();
+        renderBreadcrumb(newPath);
+        addRecent(newPath);
+        updateFileUrl(newPath);
+      }
+    } else if (type === 'dir' && currentPath && currentPath.startsWith(target + '/')) {
+      const updatedPath = newPath + currentPath.substring(target.length);
+      clearDraft(currentPath);
+      currentPath = updatedPath;
+      if (isEditing && isDirty) saveDraft();
+      renderBreadcrumb(updatedPath);
+      updateFileUrl(updatedPath);
+    }
+
+    await refreshTreeAndSelect(currentPath);
+  } catch (err) {
+    airError('Move failed', err.message);
   }
 });
 
@@ -2860,6 +2943,395 @@ $('#settingsIgnoreToggle')?.addEventListener('click', (e) => {
 });
 
 /* ============================================================
+   CUSTOM FILTER PANELS
+   ============================================================ */
+const customFiltersBody = $('#customFiltersBody');
+const customFilterAdd = $('#customFilterAdd');
+
+function loadCustomFilters() {
+  return JSON.parse(localStorage.getItem(CUSTOM_FILTERS_KEY) || '[]');
+}
+
+function saveCustomFilters(filters) {
+  localStorage.setItem(CUSTOM_FILTERS_KEY, JSON.stringify(filters));
+}
+
+function collectFiles(items, basePath) {
+  const result = [];
+  for (const item of items) {
+    if (item.type === 'file') {
+      result.push(item);
+    } else if (item.type === 'dir' && item.children) {
+      result.push(...collectFiles(item.children, item.path));
+    }
+  }
+  return result;
+}
+
+function findSubtree(items, folderPath) {
+  if (!folderPath) return items;
+  for (const item of items) {
+    if (item.type === 'dir') {
+      if (item.path === folderPath) return item.children || [];
+      if (item.children) {
+        const found = findSubtree(item.children, folderPath);
+        if (found) return found;
+      }
+    }
+  }
+  return null;
+}
+
+function filterByQuery(items, query) {
+  if (!query) return items;
+  const q = query.toLowerCase();
+  const result = [];
+  for (const item of items) {
+    if (item.type === 'file') {
+      if (item.path.toLowerCase().includes(q)) result.push(item);
+    } else if (item.type === 'dir' && item.children) {
+      const filtered = filterByQuery(item.children, query);
+      if (filtered.length > 0) {
+        result.push({ ...item, children: filtered });
+      }
+    }
+  }
+  return result;
+}
+
+function filterByPattern(items, pattern) {
+  if (!pattern) return items;
+  const result = [];
+  for (const item of items) {
+    if (item.type === 'file') {
+      if (matchFilterPattern(item.name, pattern)) result.push(item);
+    } else if (item.type === 'dir' && item.children) {
+      const filtered = filterByPattern(item.children, pattern);
+      if (filtered.length > 0) {
+        result.push({ ...item, children: filtered });
+      }
+    }
+  }
+  return result;
+}
+
+function matchFilterPattern(name, pattern) {
+  const lowerName = name.toLowerCase();
+  const parts = pattern.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (part.startsWith('*.')) {
+      if (lowerName.endsWith(part.substring(1))) return true;
+    } else if (part.startsWith('.')) {
+      if (lowerName.endsWith(part)) return true;
+    } else {
+      if (lowerName.includes(part)) return true;
+    }
+  }
+  return false;
+}
+
+function renderCustomFilterPanel(filter, index) {
+  const panel = document.createElement('div');
+  panel.className = 'custom-filter-panel';
+  panel.dataset.index = index;
+
+  const subtree = findSubtree(treeData, filter.folder);
+  const q = searchInput.value.trim();
+  const byPattern = subtree ? filterByPattern(subtree, filter.pattern) : [];
+  const items = filterByQuery(byPattern, q);
+  const allFiles = collectFiles(items, '');
+  const count = allFiles.length;
+  const label = (filter.folder || '/') + (filter.pattern ? ` (${filter.pattern})` : '');
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'custom-filter-panel-header';
+  header.innerHTML = `
+    <span class="custom-filter-panel-title" title="${esc(label)}">${esc(label)}<span class="cf-count">${count}</span></span>
+    <div class="custom-filter-panel-actions">
+      <button class="section-btn cf-view-toggle" title="Toggle tree/list">${filter.viewMode === 'list' ? '&#9776;' : '&#9660;'}</button>
+      <button class="section-btn cf-delete" title="Delete filter">✕</button>
+    </div>`;
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'custom-filter-panel-body';
+
+  if (count === 0) {
+    body.innerHTML = '<div class="cf-empty">No matching files</div>';
+  } else if (filter.viewMode === 'list') {
+    renderCfList(body, allFiles);
+  } else {
+    renderCfTree(body, items, 0);
+  }
+
+  // Toggle collapse
+  header.addEventListener('click', (e) => {
+    if (e.target.closest('.section-btn')) return;
+    body.classList.toggle('collapsed');
+  });
+
+  // View toggle
+  header.querySelector('.cf-view-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filters = loadCustomFilters();
+    filters[index].viewMode = filters[index].viewMode === 'list' ? 'tree' : 'list';
+    saveCustomFilters(filters);
+    renderAllCustomFilters();
+  });
+
+  // Delete
+  header.querySelector('.cf-delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filters = loadCustomFilters();
+    filters.splice(index, 1);
+    saveCustomFilters(filters);
+    renderAllCustomFilters();
+  });
+
+  panel.appendChild(header);
+  panel.appendChild(body);
+  return panel;
+}
+
+function renderCfList(container, files) {
+  for (const file of files) {
+    const row = document.createElement('div');
+    row.className = 'cf-item';
+    const icon = getFileIcon(file.name);
+    const dir = getDirPath(file.path);
+    row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(file.name)}</span>${dir ? `<span class="cf-path">${esc(dir)}</span>` : ''}`;
+    row.addEventListener('click', () => {
+      expandPathTo(file.path);
+      const treeRow = getTreeRow(file.path);
+      openFile(file.path, treeRow);
+    });
+    row.addEventListener('contextmenu', (e) => showContextMenu(e, file.path));
+    container.appendChild(row);
+  }
+}
+
+function renderCfTree(container, items, depth) {
+  for (const item of items) {
+    if (item.type === 'dir') {
+      const dirRow = document.createElement('div');
+      dirRow.className = 'cf-dir-row';
+      dirRow.style.setProperty('--cf-indent', `${16 + depth * 16}px`);
+      dirRow.innerHTML = `<span class="icon">&#9654;</span><span class="name">${esc(item.name)}</span>`;
+
+      const children = document.createElement('div');
+      children.className = 'cf-dir-children open';
+      dirRow.querySelector('.icon').innerHTML = '&#9660;';
+
+      dirRow.addEventListener('click', () => {
+        const isOpen = children.classList.toggle('open');
+        dirRow.querySelector('.icon').innerHTML = isOpen ? '&#9660;' : '&#9654;';
+      });
+
+      container.appendChild(dirRow);
+      container.appendChild(children);
+      renderCfTree(children, item.children, depth + 1);
+    } else {
+      const row = document.createElement('div');
+      row.className = 'cf-item cf-tree-indent';
+      row.style.setProperty('--cf-indent', `${16 + depth * 16}px`);
+      const icon = getFileIcon(item.name);
+      row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(item.name)}</span>`;
+      row.addEventListener('click', () => {
+        expandPathTo(item.path);
+        const treeRow = getTreeRow(item.path);
+        openFile(item.path, treeRow);
+      });
+      row.addEventListener('contextmenu', (e) => showContextMenu(e, item.path));
+      container.appendChild(row);
+    }
+  }
+}
+
+function renderAllCustomFilters() {
+  customFiltersBody.innerHTML = '';
+  const filters = loadCustomFilters();
+  if (filters.length === 0) {
+    customFiltersBody.innerHTML = '<div class="cf-empty">No filters. Press + to add.</div>';
+    return;
+  }
+  filters.forEach((f, i) => {
+    customFiltersBody.appendChild(renderCustomFilterPanel(f, i));
+  });
+}
+
+// --- Add Filter Dialog ---
+const afOverlay = $('#addFilterOverlay');
+const afFolderInput = $('#afFolderInput');
+const afPatternInput = $('#afPatternInput');
+const afFolderBrowse = $('#afFolderBrowse');
+const afPresetBrowse = $('#afPresetBrowse');
+const afFolderDropdown = $('#afFolderDropdown');
+const afPresetDropdown = $('#afPresetDropdown');
+const afOk = $('#addFilterOk');
+const afCancel = $('#addFilterCancel');
+const afClose = $('#addFilterClose');
+
+function buildFolderDropdown() {
+  afFolderDropdown.innerHTML = '';
+  // Root option
+  const rootItem = document.createElement('div');
+  rootItem.className = 'af-dir-row';
+  rootItem.style.setProperty('--af-indent', '8px');
+  rootItem.innerHTML = '<span class="af-dir-toggle"></span><span class="af-dir-icon">&#128193;</span><span class="af-dir-name">/ (root)</span>';
+  rootItem.addEventListener('click', (e) => {
+    if (e.target.classList.contains('af-dir-toggle')) return;
+    afFolderInput.value = '';
+    afFolderDropdown.style.display = 'none';
+  });
+  afFolderDropdown.appendChild(rootItem);
+
+  buildFolderTreeNodes(treeData, afFolderDropdown, 0);
+}
+
+function buildFolderTreeNodes(items, container, depth) {
+  for (const item of items) {
+    if (item.type !== 'dir') continue;
+    const hasSubs = item.children && item.children.some(c => c.type === 'dir');
+
+    const row = document.createElement('div');
+    row.className = 'af-dir-row';
+    row.style.setProperty('--af-indent', `${8 + (depth + 1) * 14}px`);
+    row.innerHTML = `<span class="af-dir-toggle">${hasSubs ? '&#9654;' : ''}</span><span class="af-dir-icon">&#128193;</span><span class="af-dir-name">${esc(item.name)}</span>`;
+
+    container.appendChild(row);
+
+    if (hasSubs) {
+      const childrenEl = document.createElement('div');
+      childrenEl.className = 'af-dir-children';
+      container.appendChild(childrenEl);
+
+      const toggleEl = row.querySelector('.af-dir-toggle');
+      toggleEl.style.cursor = 'pointer';
+      toggleEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = childrenEl.classList.toggle('open');
+        toggleEl.innerHTML = isOpen ? '&#9660;' : '&#9654;';
+      });
+
+      buildFolderTreeNodes(item.children, childrenEl, depth + 1);
+    }
+
+    // Click row (not toggle) → select folder
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('af-dir-toggle')) return;
+      afFolderInput.value = item.path;
+      afFolderDropdown.style.display = 'none';
+    });
+  }
+}
+
+function buildPresetDropdown() {
+  afPresetDropdown.innerHTML = '';
+  // All (no filter)
+  const allItem = document.createElement('div');
+  allItem.className = 'af-dropdown-item';
+  allItem.innerHTML = '<span>All</span>';
+  allItem.addEventListener('click', () => {
+    afPatternInput.value = '';
+    afPresetDropdown.style.display = 'none';
+  });
+  afPresetDropdown.appendChild(allItem);
+
+  const presets = loadPresets();
+  for (const preset of presets) {
+    const item = document.createElement('div');
+    item.className = 'af-dropdown-item';
+    item.innerHTML = `<span>${esc(preset.label)}</span><span class="af-preset-exts">${esc(preset.exts)}</span>`;
+    item.addEventListener('click', () => {
+      // Convert ".md .txt" format to "*.md, *.txt"
+      const pattern = preset.exts.split(/\s+/).map(e => e.startsWith('.') ? '*' + e : e).join(', ');
+      afPatternInput.value = pattern;
+      afPresetDropdown.style.display = 'none';
+    });
+    afPresetDropdown.appendChild(item);
+  }
+}
+
+function showAddFilterDialog() {
+  return new Promise(resolve => {
+    afFolderInput.value = '';
+    afPatternInput.value = '';
+    afFolderDropdown.style.display = 'none';
+    afPresetDropdown.style.display = 'none';
+    afOverlay.style.display = 'flex';
+    afFolderInput.focus();
+
+    const cleanup = () => {
+      afOverlay.style.display = 'none';
+      afFolderDropdown.style.display = 'none';
+      afPresetDropdown.style.display = 'none';
+      afOk.onclick = null;
+      afCancel.onclick = null;
+      afClose.onclick = null;
+      afOverlay.onclick = null;
+    };
+
+    afOk.onclick = () => {
+      const folder = afFolderInput.value.trim().replace(/\/$/, '');
+      const pattern = afPatternInput.value.trim();
+      cleanup();
+      resolve({ folder, pattern });
+    };
+
+    const cancel = () => { cleanup(); resolve(null); };
+    afCancel.onclick = cancel;
+    afClose.onclick = cancel;
+    afOverlay.onclick = (e) => { if (e.target === afOverlay) cancel(); };
+  });
+}
+
+afFolderBrowse.addEventListener('click', (e) => {
+  e.stopPropagation();
+  afPresetDropdown.style.display = 'none';
+  const isOpen = afFolderDropdown.style.display !== 'none';
+  if (isOpen) {
+    afFolderDropdown.style.display = 'none';
+  } else {
+    buildFolderDropdown();
+    afFolderDropdown.style.display = 'block';
+  }
+});
+
+afPresetBrowse.addEventListener('click', (e) => {
+  e.stopPropagation();
+  afFolderDropdown.style.display = 'none';
+  const isOpen = afPresetDropdown.style.display !== 'none';
+  if (isOpen) {
+    afPresetDropdown.style.display = 'none';
+  } else {
+    buildPresetDropdown();
+    afPresetDropdown.style.display = 'block';
+  }
+});
+
+// Close dropdowns when clicking outside
+afOverlay.addEventListener('click', (e) => {
+  if (!afFolderDropdown.contains(e.target) && e.target !== afFolderBrowse) {
+    afFolderDropdown.style.display = 'none';
+  }
+  if (!afPresetDropdown.contains(e.target) && e.target !== afPresetBrowse) {
+    afPresetDropdown.style.display = 'none';
+  }
+});
+
+customFilterAdd.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const result = await showAddFilterDialog();
+  if (!result) return;
+
+  const filters = loadCustomFilters();
+  filters.push({ folder: result.folder, pattern: result.pattern, viewMode: 'tree' });
+  saveCustomFilters(filters);
+  renderAllCustomFilters();
+});
+
+/* ============================================================
    BOOT
    ============================================================ */
 // Section header toggle (common behavior) with localStorage persistence
@@ -2890,6 +3362,7 @@ function initSectionToggle(headerEl, toggleEl, bodyEl, sectionId) {
 initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl, 'recent');
 initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList, 'favorites');
 initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl, 'tree');
+initSectionToggle($('#customFiltersHeader'), $('#customFiltersToggle'), customFiltersBody, 'customFilters');
 
 recentClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRecent(); });
 favoritesClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearFavorites(); });
@@ -2897,6 +3370,7 @@ btnExpandAll.addEventListener('click', (e) => { e.stopPropagation(); expandAllFi
 btnCollapseAll.addEventListener('click', (e) => { e.stopPropagation(); collapseAll(); });
 await loadTree();
 renderFavorites();
+renderAllCustomFilters();
 
 // Set initial history state
 const urlFileParam = new URLSearchParams(window.location.search).get('file');

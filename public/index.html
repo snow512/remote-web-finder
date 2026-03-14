@@ -27,6 +27,7 @@
         </div>
         <div class="search-wrapper">
           <input type="text" class="search-input" id="searchInput" placeholder="Filter files... (Ctrl+P)">
+          <button class="search-clear-btn" id="searchClear" title="Clear" style="display:none">&times;</button>
           <span class="filter-count" id="filterCount"></span>
           <button class="filter-preset-btn" id="filterPresetBtn" title="Filter presets">&#9662;</button>
           <div class="filter-preset-menu" id="filterPresetMenu"></div>
@@ -54,6 +55,13 @@
         </div>
       </div>
       <div class="tree" id="tree" tabindex="0"></div>
+      <div class="custom-filters-section" id="customFiltersSection">
+        <div class="section-header" id="customFiltersHeader">
+          <span class="section-header-left"><span class="section-toggle" id="customFiltersToggle">&#9660;</span><span class="section-title">Filters</span></span>
+          <div class="section-actions"><button class="section-btn" id="customFilterAdd" title="Add filter">+</button></div>
+        </div>
+        <div class="custom-filters-body" id="customFiltersBody"></div>
+      </div>
     </aside>
 
     <!-- Sidebar resize handle -->
@@ -138,6 +146,7 @@
   <div class="context-menu" id="contextMenu" style="display:none">
     <div class="context-item" id="ctxFavorite">&#9733; Favorite</div>
     <div class="context-item" id="ctxRename">Rename</div>
+    <div class="context-item" id="ctxMove">Move to...</div>
     <div class="context-item" id="ctxCopy">Copy</div>
     <div class="context-item" id="ctxNewFile">New file</div>
     <div class="context-item" id="ctxNewFolder">New folder</div>
@@ -230,6 +239,35 @@
             <button class="seg-btn" data-value="on">ON</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Filter dialog -->
+  <div class="overlay" id="addFilterOverlay" style="display:none">
+    <div class="dialog dialog-sm">
+      <div class="dialog-header"><h3>Add Filter</h3><button class="dialog-close" id="addFilterClose">&times;</button></div>
+      <div class="dialog-body">
+        <div class="af-field">
+          <label class="af-label">Folder</label>
+          <div class="af-input-wrap">
+            <input type="text" class="af-input" id="afFolderInput" placeholder="e.g. docs/tasks">
+            <button class="af-suffix-btn" id="afFolderBrowse" title="Browse folders">&#128193;</button>
+          </div>
+          <div class="af-dropdown" id="afFolderDropdown" style="display:none"></div>
+        </div>
+        <div class="af-field">
+          <label class="af-label">File filter</label>
+          <div class="af-input-wrap">
+            <input type="text" class="af-input" id="afPatternInput" placeholder="e.g. *.md, *.js">
+            <button class="af-suffix-btn" id="afPresetBrowse" title="Presets">&#9662;</button>
+          </div>
+          <div class="af-dropdown" id="afPresetDropdown" style="display:none"></div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="dialog-btn cancel" id="addFilterCancel">Cancel</button>
+        <button class="dialog-btn ok" id="addFilterOk">Add</button>
       </div>
     </div>
   </div>
