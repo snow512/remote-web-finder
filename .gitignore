@@ -6,3 +6,4 @@ node_modules/
 .temp/
 .env
 .rwf.pid
+.madang/.server.pid
