@@ -569,7 +569,6 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0;
   border-bottom: none;
   overflow: hidden;
 }
@@ -592,15 +591,20 @@ html, body {
 
 /* === Filters Section === */
 .sidebar-section--filters {
-  flex: 0 1 auto;
+  flex: 0.4 1 auto;
   max-height: 40%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border);
   border-bottom: none;
-  padding: 0;
   overflow: hidden;
+}
+
+/* When filters is collapsed, shrink to header only */
+.sidebar-section--filters:has(.sidebar-section-body.collapsed) {
+  flex: 0 0 auto;
+  max-height: none;
 }
 
 /* When tree is collapsed, filters expand into available space */
