@@ -1402,6 +1402,18 @@ mark.search-hl.active {
   white-space: nowrap;
 }
 
+.dash-more {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dash-more:hover {
+  color: var(--accent-hover);
+}
+
 .dash-hint {
   font-size: 13px;
   color: var(--text-muted);

@@ -1407,28 +1407,27 @@ function showWelcomeScreen() {
   const dirs = countDirs(treeData);
   const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
 
-  let recentHtml = '';
-  if (recent.length > 0) {
-    recentHtml = `<div class="dash-section"><div class="dash-section-title">Recent Files</div>`;
-    for (const p of recent.slice(0, 5)) {
+  const DASH_VISIBLE = 3;
+
+  function buildDashList(title, items) {
+    if (items.length === 0) return '';
+    let html = `<div class="dash-section"><div class="dash-section-title">${title}</div>`;
+    items.forEach((p, i) => {
       const name = getFileName(p);
       const dir = getDirPath(p);
-      recentHtml += `<div class="dash-recent-item" data-path="${esc(p)}"><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+      const hidden = i >= DASH_VISIBLE ? ' style="display:none"' : '';
+      html += `<div class="dash-recent-item" data-path="${esc(p)}"${hidden}><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+    });
+    if (items.length > DASH_VISIBLE) {
+      html += `<div class="dash-more">more (${items.length - DASH_VISIBLE})</div>`;
     }
-    recentHtml += `</div>`;
+    html += `</div>`;
+    return html;
   }
 
+  const recentHtml = buildDashList('Recent Files', recent.slice(0, 5));
   const favs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-  let favsHtml = '';
-  if (favs.length > 0) {
-    favsHtml = `<div class="dash-section"><div class="dash-section-title">Favorites</div>`;
-    for (const p of favs) {
-      const name = getFileName(p);
-      const dir = getDirPath(p);
-      favsHtml += `<div class="dash-recent-item" data-path="${esc(p)}"><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
-    }
-    favsHtml += `</div>`;
-  }
+  const favsHtml = buildDashList('Favorites', favs);
 
   previewEl.innerHTML = `<div class="dashboard">
     <div class="dash-stats">
@@ -1446,6 +1445,15 @@ function showWelcomeScreen() {
       const p = el.dataset.path;
       const row = getTreeRow(p);
       openFile(p, row);
+    });
+  });
+
+  // "more" expand handler
+  previewEl.querySelectorAll('.dash-more').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('.dash-section');
+      section.querySelectorAll('.dash-recent-item[style]').forEach(el => el.style.display = '');
+      btn.remove();
     });
   });
 }
