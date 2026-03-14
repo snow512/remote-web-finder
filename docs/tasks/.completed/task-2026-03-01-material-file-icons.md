@@ -16,7 +16,7 @@ Replace simple HTML entity emoji icons (📄, {}, ⚙, 🖼, 📰) with `materia
 
 ### Phase 1: Implementation
 - [x] `public/index.html` — Change script tag to `type="module"`
-- [x] `public/app.js` — Dynamic import + replace `getFileIcon()` body (확장자 기준 정규화로 같은 확장자 = 같은 아이콘 보장)
+- [x] `public/app.js` — Dynamic import + replace `getFileIcon()` body (normalize by extension so same extension = same icon)
 - [x] `public/style.css` — Update icon styles for SVG rendering
 
 ## Verification
