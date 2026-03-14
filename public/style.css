@@ -170,7 +170,8 @@ html, body {
 .section-title,
 .toc-header,
 .shortcut-group-title,
-.settings-section-title {
+.settings-section-title,
+.dash-section-title {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1312,11 +1313,6 @@ mark.search-hl.active {
 }
 
 .dash-section-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -1734,7 +1730,6 @@ mark.search-hl.active {
   font-size: 14px;
   border-radius: 6px;
   outline: none;
-  box-sizing: border-box;
 }
 
 /* .dialog-input:focus → common input focus */
@@ -1998,9 +1993,7 @@ mark.search-hl.active {
 /* === Mobile === */
 @media (max-width: 768px) {
   .hamburger { display: block; }
-  .toolbar { display: flex !important; padding: 8px 12px; }
-  .toolbar:not(.has-file) .toolbar-actions { display: none; }
-  .toolbar:not(.has-file) .breadcrumb { justify-content: flex-start; }
+  .toolbar { display: flex; padding: 8px 12px; }
 
   .sidebar {
     position: fixed;

@@ -255,9 +255,14 @@ marked.use({
       const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
       return `<img src="${safeHref}" alt="${safeText}"${titleAttr} loading="lazy">`;
     },
-    // Sanitize: strip <script> tags from rendered HTML
+    // Sanitize: strip dangerous HTML tags and attributes
     html({ text }) {
-      return text.replace(/<script[\s>][\s\S]*?<\/script>/gi, '');
+      return text
+        .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
+        .replace(/<(iframe|object|embed|form|style)[\s>][\s\S]*?<\/\1>/gi, '')
+        .replace(/<(iframe|object|embed|form|style)\b[^>]*\/?\s*>/gi, '')
+        .replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+        .replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="');
     }
   }
 });
@@ -280,23 +285,6 @@ function showToast(message, type = 'info') {
 /* ============================================================
    1-B. AIR POPUP (common dialog component)
    ============================================================ */
-function airAlert(title, message) {
-  return new Promise(resolve => {
-    airPopupTitle.textContent = title;
-    airPopupBody.textContent = message || '';
-    airPopupInput.style.display = 'none';
-    airPopupCancel.style.display = 'none';
-    airPopupOk.textContent = 'OK';
-    airPopupOk.className = 'dialog-btn ok';
-    airPopupOverlay.style.display = 'flex';
-    const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
-    airPopupOk.onclick = done;
-    airPopupCancel.onclick = null;
-    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(); };
-    airPopupOk.focus();
-  });
-}
-
 function airError(title, errorMsg) {
   return new Promise(resolve => {
     airPopupTitle.textContent = title;
@@ -1412,7 +1400,7 @@ function showWelcomeScreen() {
   // Build dashboard
   const files = countFiles(treeData);
   const dirs = countDirs(treeData);
-  const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  const recent = getRecent();
 
   const DASH_VISIBLE = 3;
 
@@ -1433,7 +1421,7 @@ function showWelcomeScreen() {
   }
 
   const recentHtml = buildDashList('Recent Files', recent.slice(0, 5));
-  const favs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+  const favs = getFavorites();
   const favsHtml = buildDashList('Favorites', favs);
 
   previewEl.innerHTML = `<div class="dashboard">
@@ -1736,6 +1724,7 @@ function showImagePreview(filePath) {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
+        if (pinchStartDist === 0) return;
         const scale = dist / pinchStartDist;
         imageZoomLevel = Math.max(0.3, Math.min(3.0, pinchStartZoom * scale));
         applyImageZoom();
@@ -1928,8 +1917,11 @@ function hideTOC() {
 /* ============================================================
    11. LINE NUMBERS
    ============================================================ */
+let _prevLineCount = 0;
 function updateLineNumbers() {
   const lines = editorEl.value.split('\n').length;
+  if (lines === _prevLineCount) return;
+  _prevLineCount = lines;
   let html = '';
   for (let i = 1; i <= lines; i++) {
     html += `<span class="ln">${i}</span>`;
@@ -2964,7 +2956,7 @@ const customFiltersBody = $('#customFiltersBody');
 const customFilterAdd = $('#customFilterAdd');
 
 function loadCustomFilters() {
-  return JSON.parse(localStorage.getItem(CUSTOM_FILTERS_KEY) || '[]');
+  try { return JSON.parse(localStorage.getItem(CUSTOM_FILTERS_KEY) || '[]'); } catch { return []; }
 }
 
 function saveCustomFilters(filters) {

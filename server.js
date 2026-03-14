@@ -75,9 +75,13 @@ function createApp(docsDir, ignorePatterns) {
   app.head('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).end();
-    if (!fs.existsSync(filePath)) return res.status(404).end();
-    const stat = fs.statSync(filePath);
-    res.set('Content-Length', stat.size).type('text/plain').end();
+    try {
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) return res.status(404).end();
+      res.set('Content-Length', stat.size).type('text/plain').end();
+    } catch {
+      res.status(404).end();
+    }
   });
 
   app.get('/api/file', (req, res) => {
@@ -96,12 +100,12 @@ function createApp(docsDir, ignorePatterns) {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-    try {
-      res.sendFile(filePath);
-    } catch (err) {
-      console.error('GET /api/raw error:', err);
-      res.status(500).json({ error: err.message });
-    }
+    res.sendFile(filePath, (err) => {
+      if (err && !res.headersSent) {
+        console.error('GET /api/raw error:', err);
+        res.status(500).json({ error: err.message });
+      }
+    });
   });
 
   app.put('/api/file', (req, res) => {
