@@ -33,34 +33,36 @@
           <div class="filter-preset-menu" id="filterPresetMenu"></div>
         </div>
       </div>
-      <div class="recent-files" id="recentFiles">
+      <div class="sidebar-section" id="recentSection">
         <div class="section-header" id="recentHeader">
           <span class="section-header-left"><span class="section-toggle" id="recentToggle">&#9660;</span><span class="section-title">Recent</span></span>
           <div class="section-actions"><button class="section-btn" id="recentClear" title="Clear all">✕</button></div>
         </div>
-        <div class="recent-list" id="recentList"></div>
+        <div class="sidebar-section-body" id="recentList"></div>
       </div>
-      <div class="favorites-section" id="favoritesSection">
+      <div class="sidebar-section" id="favoritesSection">
         <div class="section-header" id="favoritesHeader">
           <span class="section-header-left"><span class="section-toggle" id="favoritesToggle">&#9660;</span><span class="section-title">Favorites</span></span>
           <div class="section-actions"><button class="section-btn" id="favoritesClear" title="Clear all">✕</button></div>
         </div>
-        <div class="favorites-list" id="favoritesList"></div>
+        <div class="sidebar-section-body" id="favoritesList"></div>
       </div>
-      <div class="section-header" id="treeHeader">
-        <span class="section-header-left"><span class="section-toggle" id="treeToggle">&#9660;</span><span class="section-title">Tree</span></span>
-        <div class="section-actions">
-          <button class="section-btn" id="btnExpandAll" title="Expand all (1 level)">&#9660;</button>
-          <button class="section-btn" id="btnCollapseAll" title="Collapse all">&#9654;</button>
+      <div class="sidebar-section sidebar-section--tree">
+        <div class="section-header" id="treeHeader">
+          <span class="section-header-left"><span class="section-toggle" id="treeToggle">&#9660;</span><span class="section-title">Tree</span></span>
+          <div class="section-actions">
+            <button class="section-btn" id="btnExpandAll" title="Expand all (1 level)">&#9660;</button>
+            <button class="section-btn" id="btnCollapseAll" title="Collapse all">&#9654;</button>
+          </div>
         </div>
+        <div class="tree" id="tree" tabindex="0"></div>
       </div>
-      <div class="tree" id="tree" tabindex="0"></div>
-      <div class="custom-filters-section" id="customFiltersSection">
+      <div class="sidebar-section sidebar-section--filters" id="customFiltersSection">
         <div class="section-header" id="customFiltersHeader">
           <span class="section-header-left"><span class="section-toggle" id="customFiltersToggle">&#9660;</span><span class="section-title">Filters</span></span>
           <div class="section-actions"><button class="section-btn" id="customFilterAdd" title="Add filter">+</button></div>
         </div>
-        <div class="custom-filters-body" id="customFiltersBody"></div>
+        <div class="sidebar-section-body" id="customFiltersBody"></div>
       </div>
     </aside>
 

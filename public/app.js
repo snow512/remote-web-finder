@@ -127,7 +127,7 @@ const searchInput = $('#searchInput');
 const filterPresetBtn = $('#filterPresetBtn');
 const filterPresetMenu = $('#filterPresetMenu');
 const filterCountEl = $('#filterCount');
-const recentFilesEl = $('#recentFiles');
+const recentFilesEl = $('#recentSection');
 const recentListEl = $('#recentList');
 const recentClearBtn = $('#recentClear');
 const favoritesSection = $('#favoritesSection');
@@ -457,12 +457,12 @@ function renderRecent() {
   recentListEl.innerHTML = '';
   recentClearBtn.style.display = list.length ? '' : 'none';
   if (list.length === 0) {
-    recentListEl.innerHTML = '<div class="recent-empty">No recent files</div>';
+    recentListEl.innerHTML = '<div class="sidebar-section-empty">No recent files</div>';
     return;
   }
   list.forEach(p => {
     const item = document.createElement('div');
-    item.className = 'recent-item';
+    item.className = 'sidebar-list-item';
     const name = getFileName(p);
     item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
     item.querySelector('.list-item-del').addEventListener('click', (e) => {
@@ -518,12 +518,12 @@ function renderFavorites() {
   favoritesList.innerHTML = '';
   favoritesClearBtn.style.display = list.length ? '' : 'none';
   if (list.length === 0) {
-    favoritesList.innerHTML = '<div class="favorites-empty">No favorites</div>';
+    favoritesList.innerHTML = '<div class="sidebar-section-empty">No favorites</div>';
     return;
   }
   list.forEach(p => {
     const item = document.createElement('div');
-    item.className = 'favorite-item';
+    item.className = 'sidebar-list-item';
     const name = getFileName(p);
     item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
     item.querySelector('.list-item-del').addEventListener('click', (e) => {
@@ -3066,7 +3066,7 @@ function renderCustomFilterPanel(filter, index) {
   body.className = 'custom-filter-panel-body';
 
   if (count === 0) {
-    body.innerHTML = '<div class="cf-empty">No matching files</div>';
+    body.innerHTML = '<div class="sidebar-section-empty">No matching files</div>';
   } else if (filter.viewMode === 'list') {
     renderCfList(body, allFiles);
   } else {
@@ -3105,7 +3105,7 @@ function renderCustomFilterPanel(filter, index) {
 function renderCfList(container, files) {
   for (const file of files) {
     const row = document.createElement('div');
-    row.className = 'cf-item';
+    row.className = 'sidebar-list-item';
     const icon = getFileIcon(file.name);
     const dir = getDirPath(file.path);
     row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(file.name)}</span>${dir ? `<span class="cf-path">${esc(dir)}</span>` : ''}`;
@@ -3141,7 +3141,7 @@ function renderCfTree(container, items, depth) {
       renderCfTree(children, item.children, depth + 1);
     } else {
       const row = document.createElement('div');
-      row.className = 'cf-item cf-tree-indent';
+      row.className = 'sidebar-list-item cf-tree-indent';
       row.style.setProperty('--cf-indent', `${16 + depth * 16}px`);
       const icon = getFileIcon(item.name);
       row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(item.name)}</span>`;
@@ -3160,7 +3160,7 @@ function renderAllCustomFilters() {
   customFiltersBody.innerHTML = '';
   const filters = loadCustomFilters();
   if (filters.length === 0) {
-    customFiltersBody.innerHTML = '<div class="cf-empty">No filters. Press + to add.</div>';
+    customFiltersBody.innerHTML = '<div class="sidebar-section-empty">No filters. Press + to add.</div>';
     return;
   }
   filters.forEach((f, i) => {

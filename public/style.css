@@ -118,7 +118,7 @@ html, body {
 /* === Text Truncate (common utility) === */
 .text-truncate,
 .filter-preset-item .preset-exts,
-.recent-item .name,
+.sidebar-list-item .name,
 .tree-item .name,
 .breadcrumb-item,
 .save-error-msg,
@@ -132,7 +132,7 @@ html, body {
 /* === Hover Highlight (common utility) === */
 .btn-sm:hover,
 .filter-preset-btn:hover,
-.recent-item:hover,
+.sidebar-list-item:hover,
 .tree-item:hover,
 .btn-icon:hover {
   background: var(--bg-hover);
@@ -140,7 +140,7 @@ html, body {
 }
 
 /* === Icon Container (common utility) === */
-.recent-item .icon,
+.sidebar-list-item .icon,
 .tree-item .icon {
   margin-right: 6px;
   flex-shrink: 0;
@@ -455,6 +455,10 @@ html, body {
   transform: rotate(-90deg);
 }
 
+.section-header:has(.section-toggle.collapsed) .section-actions {
+  display: none;
+}
+
 /* .section-title → section-heading via common selector */
 
 .section-actions {
@@ -475,18 +479,38 @@ html, body {
   opacity: 1;
 }
 
-/* === Recent Files === */
-.recent-files {
+/* === Sidebar Section (common component) === */
+.sidebar-section {
   border-bottom: 1px solid var(--border);
   padding: 6px 0;
   flex-shrink: 0;
 }
 
-.recent-list.collapsed {
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+/* Section body — collapsed state */
+.sidebar-section-body.collapsed {
   display: none;
 }
 
-.recent-item {
+/* Section body — scrollable list (max 5 items visible) */
+.sidebar-section-body {
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+/* Section empty state */
+.sidebar-section-empty {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* === Sidebar List Item (common component) === */
+.sidebar-list-item {
   display: flex;
   align-items: center;
   padding: 3px 16px;
@@ -498,18 +522,22 @@ html, body {
   overflow: hidden;
 }
 
-/* .recent-item:hover → hover-highlight via common selector */
+/* .sidebar-list-item:hover → hover-highlight via common selector */
+/* .sidebar-list-item .name → text-truncate via common selector */
+/* .sidebar-list-item .icon → icon-container via common selector */
 
-.recent-empty, .favorites-empty {
-  padding: 6px 16px;
+.sidebar-list-item .icon {
   font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
+  width: 16px;
+  height: 16px;
 }
 
-/* .recent-item .name → text-truncate via common selector */
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
 
-/* Individual delete button for recent/favorite items */
+/* Individual delete button for list items */
 .list-item-del {
   background: none;
   border: none;
@@ -524,8 +552,7 @@ html, body {
   transition: opacity 0.15s;
 }
 
-.recent-item:hover .list-item-del,
-.favorite-item:hover .list-item-del {
+.sidebar-list-item:hover .list-item-del {
   opacity: 0.6;
 }
 
@@ -534,72 +561,16 @@ html, body {
   color: var(--btn-cancel);
 }
 
-.recent-item .icon {
-  font-size: 12px;
-  width: 16px;
-  height: 16px;
-}
-
-.icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* === Favorites === */
-.favorites-section {
-  border-bottom: 1px solid var(--border);
-  padding: 6px 0;
-  flex-shrink: 0;
-}
-
-.favorites-list {
-  max-height: 130px;
-  overflow-y: auto;
-}
-
-.favorites-list.collapsed {
-  display: none;
-}
-
-.favorite-item {
+/* === Tree Section === */
+.sidebar-section--tree {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  padding: 3px 16px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-  transition: background 0.1s;
-  overflow: hidden;
+  flex-direction: column;
+  padding: 0;
+  border-bottom: none;
 }
 
-.favorite-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.favorite-item .icon {
-  margin-right: 6px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  width: 16px;
-  height: 16px;
-}
-
-.favorite-item .name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tree.collapsed {
-  display: none;
-}
-
-/* === Tree === */
 .tree {
   flex: 1;
   overflow-y: auto;
@@ -607,22 +578,24 @@ html, body {
   min-height: 0;
 }
 
-/* === Custom Filters === */
-.custom-filters-section {
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
+.tree.collapsed {
+  display: none;
+}
+
+/* === Filters Section === */
+.sidebar-section--filters {
   max-height: 40%;
   display: flex;
   flex-direction: column;
-}
-
-.custom-filters-body {
-  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: none;
   padding: 0;
 }
 
-.custom-filters-body.collapsed {
-  display: none;
+.sidebar-section--filters .sidebar-section-body {
+  max-height: none;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .custom-filter-panel {
@@ -675,42 +648,8 @@ html, body {
   display: none;
 }
 
-.cf-item {
-  display: flex;
-  align-items: center;
-  padding: 3px 16px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-  transition: background 0.1s;
-  overflow: hidden;
-}
-
-.cf-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.cf-item .icon {
-  margin-right: 6px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  width: 16px;
-  height: 16px;
-}
-
-.cf-item .name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.cf-item .cf-path {
+/* cf-item extends sidebar-list-item — only unique styles here */
+.cf-path {
   font-size: 11px;
   color: var(--text-muted);
   opacity: 0.6;
@@ -752,13 +691,6 @@ html, body {
 
 .cf-dir-children.open {
   display: block;
-}
-
-.cf-empty {
-  padding: 6px 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 .cf-count {
