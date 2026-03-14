@@ -497,7 +497,9 @@ html, body {
 
 /* Section body — scrollable list (max 5 items visible) */
 .sidebar-section-body {
-  max-height: 130px;
+  --list-item-height: calc(var(--list-item-font, 13px) * var(--list-item-lh, 1.5) + var(--list-item-pad-y, 3px) * 2);
+  --list-max-items: 5;
+  max-height: calc(var(--list-item-height) * var(--list-max-items));
   overflow-y: auto;
 }
 
@@ -513,11 +515,11 @@ html, body {
 .sidebar-list-item {
   display: flex;
   align-items: center;
-  padding: 3px 16px;
+  padding: var(--list-item-pad-y, 3px) 16px;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--list-item-font, 13px);
+  line-height: var(--list-item-lh, 1.5);
   transition: background 0.1s;
   overflow: hidden;
 }
@@ -563,12 +565,13 @@ html, body {
 
 /* === Tree Section === */
 .sidebar-section--tree {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 0;
   border-bottom: none;
+  overflow: hidden;
 }
 
 .tree {
@@ -582,14 +585,28 @@ html, body {
   display: none;
 }
 
+/* When tree is collapsed, section shrinks to header only */
+.sidebar-section--tree:has(.tree.collapsed) {
+  flex: 0 0 auto;
+}
+
 /* === Filters Section === */
 .sidebar-section--filters {
+  flex: 0 1 auto;
   max-height: 40%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border);
   border-bottom: none;
   padding: 0;
+  overflow: hidden;
+}
+
+/* When tree is collapsed, filters expand into available space */
+.sidebar-section--tree:has(.tree.collapsed) ~ .sidebar-section--filters {
+  flex: 1 1 0;
+  max-height: none;
 }
 
 .sidebar-section--filters .sidebar-section-body {
