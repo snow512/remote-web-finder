@@ -2732,7 +2732,7 @@ editorEl.addEventListener('keydown', (e) => {
 function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 /* ============================================================
@@ -2762,6 +2762,11 @@ function saveScrollPosition() {
   if (!currentPath) return;
   const target = isEditing ? editorEl : previewEl;
   scrollPositions.set(currentPath, target.scrollTop);
+  // Cap scroll positions map to prevent unbounded growth
+  if (scrollPositions.size > 50) {
+    const first = scrollPositions.keys().next().value;
+    scrollPositions.delete(first);
+  }
 }
 
 function restoreScrollPosition(filePath) {

@@ -114,7 +114,7 @@ function createApp(docsDir, ignorePatterns) {
     try {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, req.body, 'utf-8');
+      fs.writeFileSync(filePath, req.body ?? '', 'utf-8');
       res.json({ ok: true });
     } catch (err) {
       console.error('PUT /api/file error:', err);
@@ -142,6 +142,7 @@ function createApp(docsDir, ignorePatterns) {
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
     try {
+      if (fs.statSync(filePath).isDirectory()) return res.status(400).json({ error: 'Use DELETE /api/folder for directories' });
       fs.unlinkSync(filePath);
       res.json({ ok: true });
     } catch (err) {
