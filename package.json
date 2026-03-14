@@ -1,6 +1,6 @@
 {
   "name": "remote-web-finder",
-  "version": "1.0.0",
+  "version": "0.11.0-beta",
   "description": "Local markdown document viewer and editor with live preview",
   "main": "server.js",
   "bin": {
