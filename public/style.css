@@ -118,7 +118,7 @@ html, body {
 /* === Text Truncate (common utility) === */
 .text-truncate,
 .filter-preset-item .preset-exts,
-.recent-item .name,
+.sidebar-list-item .name,
 .tree-item .name,
 .breadcrumb-item,
 .save-error-msg,
@@ -132,7 +132,7 @@ html, body {
 /* === Hover Highlight (common utility) === */
 .btn-sm:hover,
 .filter-preset-btn:hover,
-.recent-item:hover,
+.sidebar-list-item:hover,
 .tree-item:hover,
 .btn-icon:hover {
   background: var(--bg-hover);
@@ -140,7 +140,7 @@ html, body {
 }
 
 /* === Icon Container (common utility) === */
-.recent-item .icon,
+.sidebar-list-item .icon,
 .tree-item .icon {
   margin-right: 6px;
   flex-shrink: 0;
@@ -170,7 +170,8 @@ html, body {
 .section-title,
 .toc-header,
 .shortcut-group-title,
-.settings-section-title {
+.settings-section-title,
+.dash-section-title {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -249,6 +250,27 @@ html, body {
 }
 
 /* .search-input:focus → common input focus */
+
+/* Clear button floats inside the search input area */
+.search-clear-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  margin-left: -1px;
+}
+
+.search-clear-btn:hover {
+  opacity: 1;
+  color: var(--text);
+}
 
 .search-input.no-matches {
   border-color: var(--btn-cancel);
@@ -434,6 +456,10 @@ html, body {
   transform: rotate(-90deg);
 }
 
+.section-header:has(.section-toggle.collapsed) .section-actions {
+  display: none;
+}
+
 /* .section-title → section-heading via common selector */
 
 .section-actions {
@@ -454,105 +480,381 @@ html, body {
   opacity: 1;
 }
 
-/* === Recent Files === */
-.recent-files {
+/* === Sidebar Section (common component) === */
+.sidebar-section {
   border-bottom: 1px solid var(--border);
   padding: 6px 0;
   flex-shrink: 0;
 }
 
-.recent-list.collapsed {
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+/* Section body — collapsed state */
+.sidebar-section-body.collapsed {
   display: none;
 }
 
-.recent-item {
-  display: flex;
-  align-items: center;
-  padding: 3px 16px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-  transition: background 0.1s;
-  overflow: hidden;
+/* Section body — scrollable list (max 5 items visible) */
+.sidebar-section-body {
+  --list-item-height: calc(var(--list-item-font, 13px) * var(--list-item-lh, 1.5) + var(--list-item-pad-y, 3px) * 2);
+  --list-max-items: 5;
+  max-height: calc(var(--list-item-height) * var(--list-max-items));
+  overflow-y: auto;
 }
 
-/* .recent-item:hover → hover-highlight via common selector */
-
-.recent-empty, .favorites-empty {
+/* Section empty state */
+.sidebar-section-empty {
   padding: 6px 16px;
   font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
 }
 
-/* .recent-item .name → text-truncate via common selector */
-
-.recent-item .icon {
-  font-size: 12px;
-  width: 16px;
-  height: 16px;
-}
-
-.icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* === Favorites === */
-.favorites-section {
-  border-bottom: 1px solid var(--border);
-  padding: 6px 0;
-  flex-shrink: 0;
-}
-
-.favorites-list.collapsed {
-  display: none;
-}
-
-.favorite-item {
+/* === Sidebar List Item (common component) === */
+.sidebar-list-item {
   display: flex;
   align-items: center;
-  padding: 3px 16px;
+  padding: var(--list-item-pad-y, 3px) 16px;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--list-item-font, 13px);
+  line-height: var(--list-item-lh, 1.5);
   transition: background 0.1s;
   overflow: hidden;
 }
 
-.favorite-item:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+/* .sidebar-list-item:hover → hover-highlight via common selector */
+/* .sidebar-list-item .name → text-truncate via common selector */
+/* .sidebar-list-item .icon → icon-container via common selector */
 
-.favorite-item .icon {
-  margin-right: 6px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.sidebar-list-item .icon {
   font-size: 12px;
   width: 16px;
   height: 16px;
 }
 
-.favorite-item .name {
+
+/* Individual delete button for list items */
+.list-item-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  margin-left: auto;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sidebar-list-item:hover .list-item-del {
+  opacity: 0.6;
+}
+
+.list-item-del:hover {
+  opacity: 1 !important;
+  color: var(--btn-cancel);
+}
+
+/* === Tree Section === */
+.sidebar-section--tree {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-bottom: none;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 0;
 }
 
 .tree.collapsed {
   display: none;
 }
 
-/* === Tree === */
-.tree {
-  flex: 1;
+/* When tree is collapsed, section shrinks to header only */
+.sidebar-section--tree:has(.tree.collapsed) {
+  flex: 0 0 auto;
+}
+
+/* === Filters Section === */
+.sidebar-section--filters {
+  flex: 0.4 1 auto;
+  max-height: 40%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  overflow: hidden;
+}
+
+/* When filters is collapsed, shrink to header only */
+.sidebar-section--filters:has(.sidebar-section-body.collapsed) {
+  flex: 0 0 auto;
+  max-height: none;
+}
+
+/* When tree is collapsed, filters expand into available space */
+.sidebar-section--tree:has(.tree.collapsed) ~ .sidebar-section--filters {
+  flex: 1 1 0;
+  max-height: none;
+}
+
+.sidebar-section--filters .sidebar-section-body {
+  max-height: none;
   overflow-y: auto;
-  padding: 8px 0;
+  flex: 1;
+}
+
+.custom-filter-panel {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.custom-filter-panel:last-child {
+  border-bottom: none;
+}
+
+.custom-filter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 12px 2px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-filter-panel-header:hover {
+  color: var(--text);
+}
+
+.custom-filter-panel-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.custom-filter-panel-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.custom-filter-panel-actions .section-btn {
+  padding: 1px 4px;
+}
+
+.custom-filter-panel-body {
+  padding: 0;
+}
+
+.custom-filter-panel-body.collapsed {
+  display: none;
+}
+
+/* cf-item extends sidebar-list-item — only unique styles here */
+.cf-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.cf-tree-indent {
+  padding-left: var(--cf-indent, 16px);
+}
+
+.cf-dir-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 16px 3px var(--cf-indent, 16px);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cf-dir-row:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.cf-dir-row .icon {
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.cf-dir-children {
+  display: none;
+}
+
+.cf-dir-children.open {
+  display: block;
+}
+
+.cf-count {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-left: 4px;
+}
+
+/* === Add Filter Dialog === */
+.af-field {
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.af-field:last-child {
+  margin-bottom: 0;
+}
+
+.af-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+/* Input + suffix button group (mirrors search-wrapper + filter-preset-btn) */
+.af-input-wrap {
+  display: flex;
+  gap: 0;
+}
+
+.af-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px 0 0 6px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.af-input:focus {
+  border-color: var(--accent);
+}
+
+.af-input::placeholder {
+  color: var(--text-muted);
+}
+
+.af-suffix-btn {
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.af-suffix-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* Dropdown panel */
+.af-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+  z-index: 200;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* Flat dropdown item (presets) */
+.af-dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.af-dropdown-item:first-child { border-radius: 6px 6px 0 0; }
+.af-dropdown-item:last-child { border-radius: 0 0 6px 6px; }
+.af-dropdown-item:hover { background: var(--bg-hover); }
+
+.af-dropdown-item .af-preset-exts {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
+/* Folder tree inside dropdown */
+.af-dir-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 4px var(--af-indent, 8px);
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+
+.af-dir-row:hover { background: var(--bg-hover); }
+
+.af-dir-row .af-dir-toggle {
+  font-size: 8px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.af-dir-row .af-dir-icon {
+  margin: 0 4px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.af-dir-row .af-dir-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-dir-children {
+  display: none;
+}
+
+.af-dir-children.open {
+  display: block;
 }
 
 .tree-item {
@@ -826,7 +1128,7 @@ html, body {
 }
 
 .save-error-btn:disabled:hover {
-  background: rgba(255,255,255,0.2);
+  background: transparent;
 }
 
 /* === Content Search Bar === */
@@ -1004,11 +1306,6 @@ mark.search-hl.active {
 }
 
 .dash-section-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -1037,6 +1334,8 @@ mark.search-hl.active {
 .dash-recent-name {
   color: var(--text);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-recent-path {
@@ -1045,6 +1344,18 @@ mark.search-hl.active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dash-more {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dash-more:hover {
+  color: var(--accent-hover);
 }
 
 .dash-hint {
@@ -1087,6 +1398,7 @@ mark.search-hl.active {
 }
 
 .preview pre, .live-preview pre {
+  position: relative;
   background: var(--pre-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1254,7 +1566,7 @@ mark.search-hl.active {
 .live-preview {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 24px;
+  padding: 24px;
   line-height: 1.7;
   border-left: 1px solid var(--border);
   min-width: 0;
@@ -1373,9 +1685,6 @@ mark.search-hl.active {
 }
 
 .dialog-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
   margin: 0;
 }
 
@@ -1413,7 +1722,6 @@ mark.search-hl.active {
   font-size: 14px;
   border-radius: 6px;
   outline: none;
-  box-sizing: border-box;
 }
 
 /* .dialog-input:focus → common input focus */
@@ -1497,10 +1805,6 @@ mark.search-hl.active {
 }
 
 /* === Code block copy button === */
-.preview pre, .live-preview pre {
-  position: relative;
-}
-
 .code-copy-btn {
   position: absolute;
   top: 6px;
@@ -1681,9 +1985,7 @@ mark.search-hl.active {
 /* === Mobile === */
 @media (max-width: 768px) {
   .hamburger { display: block; }
-  .toolbar { display: flex !important; padding: 8px 12px; }
-  .toolbar:not(.has-file) .toolbar-actions { display: none; }
-  .toolbar:not(.has-file) .breadcrumb { justify-content: flex-start; }
+  .toolbar { display: flex; padding: 8px 12px; }
 
   .sidebar {
     position: fixed;
@@ -1741,10 +2043,6 @@ mark.search-hl.active {
   gap: 16px;
   overflow: hidden;
   touch-action: pan-x pan-y;
-}
-.image-preview .image-name {
-  color: var(--text-muted);
-  font-size: 13px;
 }
 .image-preview img {
   max-width: 100%;

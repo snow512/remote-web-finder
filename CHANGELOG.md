@@ -2,7 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-03-11
+## [0.11.0-beta] - 2026-03-15
+
+### Added
+- CLI `--stop` command for stopping background server (PID file based)
+- `RWF_PORT` environment variable (takes precedence over `PORT`)
+- `rwf` usage added to help text
+- File move (Move) functionality
+- Custom filter panels (add/delete/apply)
+- Dashboard "more" expand for recent/favorites lists
+- Tree open/collapse and section collapse state saved to localStorage
+- Client-side utility module (`public/utils.js`) — browser + Node testable
+- Client-side unit tests: 48 tests (sanitizeHtml, isDangerousHref, path utils)
+- Server test expansion: 47 → 148 test cases (+101)
+
+### Security
+- Markdown HTML sanitizer hardened: `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<style>`, `on*` attributes, `javascript:` hrefs all blocked
+- `esc()` escapes `"` → `&quot;` (attribute breakout prevention)
+- POST `/api/file` uses `wx` flag for atomic creation (TOCTOU race prevention)
+- All file API endpoints check `isFile()` — directory paths return 400
+- `sendFile` converted to async error callback
+
+### Fixed
+- `sanitizeHtml(undefined)` crash (broke markdown preview for certain HTML comments)
+- `JSON.parse(localStorage)` try/catch added (4 locations)
+- Pinch zoom division-by-zero guard
+- `updateLineNumbers` only rebuilds when line count changes (performance)
+- `scrollPositions` Map capped at 50 entries (memory leak)
+- All server catch blocks now include `console.error`
+- `PUT /api/file` auto-creates parent directories
+- `rmdirSync` → `rmSync` (deprecated API)
+- Port NaN fallback to 5999
+- Sidebar Tree/Filters flex ratio (71:29) with proper collapse behavior
+- Sidebar section header height unified
+
+### Removed
+- `airAlert` dead code
+- Unused CSS selectors (`.icon svg`, `.image-preview .image-name`)
+- Duplicate/redundant CSS properties (6 items)
+- `collectFiles` unused `basePath` parameter
+
+## [0.10.0] - 2026-03-11
 
 ### Added
 - Show Ignored Files toggle in Settings dialog

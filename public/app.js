@@ -35,13 +35,14 @@ const IMAGE_ZOOM_KEY = 'rwf-image-zoom';
 const FONT_SIZE_KEY = 'rwf-font-size';
 const DRAFT_PREFIX = 'rwf-draft:';
 const SHOW_IGNORED_KEY = 'rwf-show-ignored';
+const OPEN_DIRS_KEY = 'rwf-open-dirs';
+const SECTIONS_KEY = 'rwf-sections-collapsed';
+const CUSTOM_FILTERS_KEY = 'rwf-custom-filters';
 const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
 /* === Path Utilities === */
-function getFileName(p) { return p ? p.split('/').pop() : ''; }
-function getDirPath(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : ''; }
-function getDirName(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : ''; }
+// getFileName, getDirPath, getDirName — defined in utils.js
 
 /* === DOM Helpers === */
 function getTreeRow(filePath) {
@@ -124,7 +125,7 @@ const searchInput = $('#searchInput');
 const filterPresetBtn = $('#filterPresetBtn');
 const filterPresetMenu = $('#filterPresetMenu');
 const filterCountEl = $('#filterCount');
-const recentFilesEl = $('#recentFiles');
+const recentFilesEl = $('#recentSection');
 const recentListEl = $('#recentList');
 const recentClearBtn = $('#recentClear');
 const favoritesSection = $('#favoritesSection');
@@ -147,6 +148,7 @@ const resizeHandle = $('#resizeHandle');
 const contextMenu = $('#contextMenu');
 const ctxDelete = $('#ctxDelete');
 const ctxRename = $('#ctxRename');
+const ctxMove = $('#ctxMove');
 const ctxCopy = $('#ctxCopy');
 const ctxFavorite = $('#ctxFavorite');
 const ctxNewFile = $('#ctxNewFile');
@@ -243,13 +245,17 @@ marked.use({
     image({ href, title, text }) {
       if (!href) return '';
       // Block dangerous protocols
-      if (/^\s*(javascript|vbscript|data(?!:image\/))/i.test(href)) {
+      if (isDangerousHref(href)) {
         return `<img src="" alt="${(text || '').replace(/"/g, '&quot;')}" loading="lazy">`;
       }
       const safeHref = href.replace(/"/g, '&quot;');
       const safeText = (text || '').replace(/"/g, '&quot;');
       const titleAttr = title ? ` title="${title.replace(/"/g, '&quot;')}"` : '';
       return `<img src="${safeHref}" alt="${safeText}"${titleAttr} loading="lazy">`;
+    },
+    // Sanitize: strip dangerous HTML tags and attributes
+    html({ text }) {
+      return sanitizeHtml(text);
     }
   }
 });
@@ -272,23 +278,6 @@ function showToast(message, type = 'info') {
 /* ============================================================
    1-B. AIR POPUP (common dialog component)
    ============================================================ */
-function airAlert(title, message) {
-  return new Promise(resolve => {
-    airPopupTitle.textContent = title;
-    airPopupBody.textContent = message || '';
-    airPopupInput.style.display = 'none';
-    airPopupCancel.style.display = 'none';
-    airPopupOk.textContent = 'OK';
-    airPopupOk.className = 'dialog-btn ok';
-    airPopupOverlay.style.display = 'flex';
-    const done = () => { airPopupOverlay.style.display = 'none'; resolve(); };
-    airPopupOk.onclick = done;
-    airPopupCancel.onclick = null;
-    airPopupOverlay.onclick = (e) => { if (e.target === airPopupOverlay) done(); };
-    airPopupOk.focus();
-  });
-}
-
 function airError(title, errorMsg) {
   return new Promise(resolve => {
     airPopupTitle.textContent = title;
@@ -299,15 +288,19 @@ function airError(title, errorMsg) {
     const copyBtn = document.createElement('button');
     copyBtn.className = 'dialog-copy-btn';
     copyBtn.textContent = 'Copy';
-    copyBtn.onclick = () => {
+    copyBtn.onclick = async () => {
       const text = errorMsg || '';
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       copyBtn.textContent = 'Copied!';
       setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
     };
@@ -453,14 +446,18 @@ function renderRecent() {
   recentListEl.innerHTML = '';
   recentClearBtn.style.display = list.length ? '' : 'none';
   if (list.length === 0) {
-    recentListEl.innerHTML = '<div class="recent-empty">No recent files</div>';
+    recentListEl.innerHTML = '<div class="sidebar-section-empty">No recent files</div>';
     return;
   }
   list.forEach(p => {
     const item = document.createElement('div');
-    item.className = 'recent-item';
+    item.className = 'sidebar-list-item';
     const name = getFileName(p);
-    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
+    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
+    item.querySelector('.list-item-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeRecent(p);
+    });
     item.addEventListener('click', () => {
       const row = getTreeRow(p);
       openFile(p, row);
@@ -510,14 +507,18 @@ function renderFavorites() {
   favoritesList.innerHTML = '';
   favoritesClearBtn.style.display = list.length ? '' : 'none';
   if (list.length === 0) {
-    favoritesList.innerHTML = '<div class="favorites-empty">No favorites</div>';
+    favoritesList.innerHTML = '<div class="sidebar-section-empty">No favorites</div>';
     return;
   }
   list.forEach(p => {
     const item = document.createElement('div');
-    item.className = 'favorite-item';
+    item.className = 'sidebar-list-item';
     const name = getFileName(p);
-    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span>`;
+    item.innerHTML = `<span class="icon">${getFileIcon(name)}</span><span class="name" title="${esc(p)}">${esc(name)}</span><button class="list-item-del" title="Remove">&times;</button>`;
+    item.querySelector('.list-item-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFavorite(p);
+    });
     item.addEventListener('click', () => {
       const row = getTreeRow(p);
       openFile(p, row);
@@ -564,13 +565,17 @@ async function loadTree() {
   treeEl.innerHTML = '';
   focusedTreeItem = null;
   renderTree(treeData, treeEl, 0);
-  // Restore previously open directories
-  if (openPaths.length) restoreOpenDirs(openPaths);
+  // Restore previously open directories (in-memory first, then localStorage)
+  const dirsToRestore = openPaths.length ? openPaths
+    : (() => { try { return JSON.parse(localStorage.getItem(OPEN_DIRS_KEY) || '[]'); } catch { return []; } })();
+  if (dirsToRestore.length) restoreOpenDirs(dirsToRestore);
   // Restore active highlight for current file
   if (currentPath) setTreeItemActive(getTreeRow(currentPath));
   renderRecent();
   // Reapply active filter after tree rebuild
   applyFilter();
+  // Refresh custom filter panels
+  if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
 }
 
 function renderTree(items, parentEl, depth) {
@@ -666,9 +671,14 @@ function renderTree(items, parentEl, depth) {
   });
 }
 
+function saveOpenDirs() {
+  localStorage.setItem(OPEN_DIRS_KEY, JSON.stringify(getOpenDirPaths()));
+}
+
 function toggleDir(row, childrenEl) {
   const isOpen = childrenEl.classList.toggle('open');
   row.querySelector('.icon').innerHTML = isOpen ? '&#9660;' : '&#9654;';
+  saveOpenDirs();
 }
 
 function expandDir(childrenEl) {
@@ -700,6 +710,7 @@ function autoExpandDepth(maxDepth) {
 
 function collapseAll() {
   treeEl.querySelectorAll('.tree-children.open').forEach(ch => collapseDir(ch));
+  saveOpenDirs();
 }
 
 function expandAllFirstLevel() {
@@ -707,6 +718,7 @@ function expandAllFirstLevel() {
   treeEl.querySelectorAll(':scope > .tree-dir > .tree-children').forEach(ch => {
     expandDir(ch);
   });
+  saveOpenDirs();
 }
 
 
@@ -721,6 +733,7 @@ function expandPathTo(filePath) {
       if (ch) expandDir(ch);
     }
   }
+  saveOpenDirs();
 }
 
 /* === Marquee scroll helpers === */
@@ -825,35 +838,31 @@ function getFileIcon(name) {
   return '&#128220;';
 }
 
-function countFiles(items) {
-  let count = 0;
-  items.forEach(item => {
-    if (item.type === 'file') count++;
-    else if (item.type === 'dir' && item.children) count += countFiles(item.children);
-  });
-  return count;
-}
-
-function countDirs(items) {
-  let count = 0;
-  items.forEach(item => {
-    if (item.type === 'dir') {
-      count++;
-      if (item.children) count += countDirs(item.children);
-    }
-  });
-  return count;
-}
+// countFiles, countDirs — defined in utils.js
 
 /* ============================================================
    5. SEARCH / FILTER (sidebar)
    ============================================================ */
+const searchClear = $('#searchClear');
+
+function updateSearchClear() {
+  searchClear.style.display = searchInput.value ? '' : 'none';
+}
+
 searchInput.addEventListener('input', () => {
+  updateSearchClear();
   applyFilter();
 });
 
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  updateSearchClear();
+  applyFilter();
+  searchInput.focus();
+});
+
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { e.stopPropagation(); searchInput.value = ''; applyFilter(); searchInput.blur(); }
+  if (e.key === 'Escape') { e.stopPropagation(); searchInput.value = ''; updateSearchClear(); applyFilter(); searchInput.blur(); }
 });
 
 // --- Filter presets ---
@@ -1059,6 +1068,7 @@ function applyFilter() {
     filterCountEl.classList.remove('visible', 'no-matches');
     filterCountEl.textContent = '';
     searchInput.classList.remove('no-matches');
+    if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
     return;
   }
   const exts = activePreset ? activePreset.exts.split(/\s+/).filter(Boolean) : null;
@@ -1071,6 +1081,7 @@ function applyFilter() {
   filterCountEl.classList.add('visible');
   filterCountEl.classList.toggle('no-matches', visibleFiles === 0);
   searchInput.classList.toggle('no-matches', visibleFiles === 0);
+  if (typeof renderAllCustomFilters === 'function') renderAllCustomFilters();
 }
 
 function filterTree(container, query, exts) {
@@ -1231,6 +1242,7 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
     }
   } catch (e) {
     if (e.name === 'AbortError') return;
+    console.warn('HEAD request failed:', e);
   }
 
   try {
@@ -1245,7 +1257,9 @@ async function openFile(filePath, rowEl, { pushHistory = true } = {}) {
         }
         throw new Error('File not found (may have been deleted)');
       }
-      throw new Error(await res.text());
+      const errText = await res.text();
+      if (signal.aborted) return;
+      throw new Error(errText);
     }
     const text = await res.text();
     originalContent = text;
@@ -1365,34 +1379,55 @@ function showWelcomeScreen() {
   // Build dashboard
   const files = countFiles(treeData);
   const dirs = countDirs(treeData);
-  const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  const recent = getRecent();
 
-  let recentHtml = '';
-  if (recent.length > 0) {
-    recentHtml = `<div class="dash-section"><div class="dash-section-title">Recent Files</div>`;
-    for (const p of recent.slice(0, 5)) {
+  const DASH_VISIBLE = 3;
+
+  function buildDashList(title, items) {
+    if (items.length === 0) return '';
+    let html = `<div class="dash-section"><div class="dash-section-title">${title}</div>`;
+    items.forEach((p, i) => {
       const name = getFileName(p);
       const dir = getDirPath(p);
-      recentHtml += `<div class="dash-recent-item" data-path="${esc(p)}"><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+      const hidden = i >= DASH_VISIBLE ? ' style="display:none"' : '';
+      html += `<div class="dash-recent-item" data-path="${esc(p)}"${hidden}><span class="icon">${getFileIcon(name)}</span><span class="dash-recent-name">${esc(name)}</span><span class="dash-recent-path">${esc(dir)}</span></div>`;
+    });
+    if (items.length > DASH_VISIBLE) {
+      html += `<div class="dash-more">more (${items.length - DASH_VISIBLE})</div>`;
     }
-    recentHtml += `</div>`;
+    html += `</div>`;
+    return html;
   }
+
+  const recentHtml = buildDashList('Recent Files', recent.slice(0, 5));
+  const favs = getFavorites();
+  const favsHtml = buildDashList('Favorites', favs);
 
   previewEl.innerHTML = `<div class="dashboard">
     <div class="dash-stats">
       <div class="dash-stat"><span class="dash-stat-value">${files}</span><span class="dash-stat-label">Files</span></div>
       <div class="dash-stat"><span class="dash-stat-value">${dirs}</span><span class="dash-stat-label">Folders</span></div>
     </div>
+    ${favsHtml}
     ${recentHtml}
     <div class="dash-hint">Select a file from the sidebar to view</div>
   </div>`;
 
-  // Click handler for dashboard recent items
+  // Click handler for dashboard items (recent + favorites)
   previewEl.querySelectorAll('.dash-recent-item').forEach(el => {
     el.addEventListener('click', () => {
       const p = el.dataset.path;
       const row = getTreeRow(p);
       openFile(p, row);
+    });
+  });
+
+  // "more" expand handler
+  previewEl.querySelectorAll('.dash-more').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('.dash-section');
+      section.querySelectorAll('.dash-recent-item[style]').forEach(el => el.style.display = '');
+      btn.remove();
     });
   });
 }
@@ -1472,6 +1507,48 @@ ctxRename.addEventListener('click', async () => {
     await refreshTreeAndSelect(currentPath);
   } catch (err) {
     airError('Rename failed', err.message);
+  }
+});
+
+ctxMove.addEventListener('click', async () => {
+  const target = ctxTargetPath;
+  const type = ctxTargetType;
+  closeContextMenu();
+  if (!target) return;
+
+  const name = getFileName(target);
+  const currentDir = getDirName(target);
+  const destDir = await airPrompt('Move to folder:', currentDir);
+  if (destDir == null || destDir === currentDir) return;
+
+  const newPath = destDir ? destDir + '/' + name : name;
+  try {
+    const res = await fetch(API.rename(target, newPath), { method: 'PATCH' });
+    await throwIfNotOk(res);
+    showToast(`Moved: ${name} → ${destDir || '/'}`, 'success');
+
+    if (type === 'file') {
+      removeRecent(target);
+      if (currentPath === target) {
+        clearDraft(target);
+        currentPath = newPath;
+        if (isEditing && isDirty) saveDraft();
+        renderBreadcrumb(newPath);
+        addRecent(newPath);
+        updateFileUrl(newPath);
+      }
+    } else if (type === 'dir' && currentPath && currentPath.startsWith(target + '/')) {
+      const updatedPath = newPath + currentPath.substring(target.length);
+      clearDraft(currentPath);
+      currentPath = updatedPath;
+      if (isEditing && isDirty) saveDraft();
+      renderBreadcrumb(updatedPath);
+      updateFileUrl(updatedPath);
+    }
+
+    await refreshTreeAndSelect(currentPath);
+  } catch (err) {
+    airError('Move failed', err.message);
   }
 });
 
@@ -1626,6 +1703,7 @@ function showImagePreview(filePath) {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
+        if (pinchStartDist === 0) return;
         const scale = dist / pinchStartDist;
         imageZoomLevel = Math.max(0.3, Math.min(3.0, pinchStartZoom * scale));
         applyImageZoom();
@@ -1818,8 +1896,11 @@ function hideTOC() {
 /* ============================================================
    11. LINE NUMBERS
    ============================================================ */
+let _prevLineCount = 0;
 function updateLineNumbers() {
   const lines = editorEl.value.split('\n').length;
+  if (lines === _prevLineCount) return;
+  _prevLineCount = lines;
   let html = '';
   for (let i = 1; i <= lines; i++) {
     html += `<span class="ln">${i}</span>`;
@@ -2630,7 +2711,7 @@ editorEl.addEventListener('keydown', (e) => {
 function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;');
 }
 
 /* ============================================================
@@ -2660,6 +2741,11 @@ function saveScrollPosition() {
   if (!currentPath) return;
   const target = isEditing ? editorEl : previewEl;
   scrollPositions.set(currentPath, target.scrollTop);
+  // Cap scroll positions map to prevent unbounded growth
+  if (scrollPositions.size > 50) {
+    const first = scrollPositions.keys().next().value;
+    scrollPositions.delete(first);
+  }
 }
 
 function restoreScrollPosition(filePath) {
@@ -2848,19 +2934,416 @@ $('#settingsIgnoreToggle')?.addEventListener('click', (e) => {
 });
 
 /* ============================================================
+   CUSTOM FILTER PANELS
+   ============================================================ */
+const customFiltersBody = $('#customFiltersBody');
+const customFilterAdd = $('#customFilterAdd');
+
+function loadCustomFilters() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_FILTERS_KEY) || '[]'); } catch { return []; }
+}
+
+function saveCustomFilters(filters) {
+  localStorage.setItem(CUSTOM_FILTERS_KEY, JSON.stringify(filters));
+}
+
+// collectFiles — defined in utils.js
+
+function findSubtree(items, folderPath) {
+  if (!folderPath) return items;
+  for (const item of items) {
+    if (item.type === 'dir') {
+      if (item.path === folderPath) return item.children || [];
+      if (item.children) {
+        const found = findSubtree(item.children, folderPath);
+        if (found) return found;
+      }
+    }
+  }
+  return null;
+}
+
+function filterByQuery(items, query) {
+  if (!query) return items;
+  const q = query.toLowerCase();
+  const result = [];
+  for (const item of items) {
+    if (item.type === 'file') {
+      if (item.path.toLowerCase().includes(q)) result.push(item);
+    } else if (item.type === 'dir' && item.children) {
+      const filtered = filterByQuery(item.children, query);
+      if (filtered.length > 0) {
+        result.push({ ...item, children: filtered });
+      }
+    }
+  }
+  return result;
+}
+
+function filterByPattern(items, pattern) {
+  if (!pattern) return items;
+  const result = [];
+  for (const item of items) {
+    if (item.type === 'file') {
+      if (matchFilterPattern(item.name, pattern)) result.push(item);
+    } else if (item.type === 'dir' && item.children) {
+      const filtered = filterByPattern(item.children, pattern);
+      if (filtered.length > 0) {
+        result.push({ ...item, children: filtered });
+      }
+    }
+  }
+  return result;
+}
+
+function matchFilterPattern(name, pattern) {
+  const lowerName = name.toLowerCase();
+  const parts = pattern.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (part.startsWith('*.')) {
+      if (lowerName.endsWith(part.substring(1))) return true;
+    } else if (part.startsWith('.')) {
+      if (lowerName.endsWith(part)) return true;
+    } else {
+      if (lowerName.includes(part)) return true;
+    }
+  }
+  return false;
+}
+
+function renderCustomFilterPanel(filter, index) {
+  const panel = document.createElement('div');
+  panel.className = 'custom-filter-panel';
+  panel.dataset.index = index;
+
+  const subtree = findSubtree(treeData, filter.folder);
+  const q = searchInput.value.trim();
+  const byPattern = subtree ? filterByPattern(subtree, filter.pattern) : [];
+  const items = filterByQuery(byPattern, q);
+  const allFiles = collectFiles(items);
+  const count = allFiles.length;
+  const label = (filter.folder || '/') + (filter.pattern ? ` (${filter.pattern})` : '');
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'custom-filter-panel-header';
+  header.innerHTML = `
+    <span class="custom-filter-panel-title" title="${esc(label)}">${esc(label)}<span class="cf-count">${count}</span></span>
+    <div class="custom-filter-panel-actions">
+      <button class="section-btn cf-view-toggle" title="Toggle tree/list">${filter.viewMode === 'list' ? '&#9776;' : '&#9660;'}</button>
+      <button class="section-btn cf-delete" title="Delete filter">✕</button>
+    </div>`;
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'custom-filter-panel-body';
+
+  if (count === 0) {
+    body.innerHTML = '<div class="sidebar-section-empty">No matching files</div>';
+  } else if (filter.viewMode === 'list') {
+    renderCfList(body, allFiles);
+  } else {
+    renderCfTree(body, items, 0);
+  }
+
+  // Toggle collapse
+  header.addEventListener('click', (e) => {
+    if (e.target.closest('.section-btn')) return;
+    body.classList.toggle('collapsed');
+  });
+
+  // View toggle
+  header.querySelector('.cf-view-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filters = loadCustomFilters();
+    filters[index].viewMode = filters[index].viewMode === 'list' ? 'tree' : 'list';
+    saveCustomFilters(filters);
+    renderAllCustomFilters();
+  });
+
+  // Delete
+  header.querySelector('.cf-delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const filters = loadCustomFilters();
+    filters.splice(index, 1);
+    saveCustomFilters(filters);
+    renderAllCustomFilters();
+  });
+
+  panel.appendChild(header);
+  panel.appendChild(body);
+  return panel;
+}
+
+function renderCfList(container, files) {
+  for (const file of files) {
+    const row = document.createElement('div');
+    row.className = 'sidebar-list-item';
+    const icon = getFileIcon(file.name);
+    const dir = getDirPath(file.path);
+    row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(file.name)}</span>${dir ? `<span class="cf-path">${esc(dir)}</span>` : ''}`;
+    row.addEventListener('click', () => {
+      expandPathTo(file.path);
+      const treeRow = getTreeRow(file.path);
+      openFile(file.path, treeRow);
+    });
+    row.addEventListener('contextmenu', (e) => showContextMenu(e, file.path));
+    container.appendChild(row);
+  }
+}
+
+function renderCfTree(container, items, depth) {
+  for (const item of items) {
+    if (item.type === 'dir') {
+      const dirRow = document.createElement('div');
+      dirRow.className = 'cf-dir-row';
+      dirRow.style.setProperty('--cf-indent', `${16 + depth * 16}px`);
+      dirRow.innerHTML = `<span class="icon">&#9654;</span><span class="name">${esc(item.name)}</span>`;
+
+      const children = document.createElement('div');
+      children.className = 'cf-dir-children open';
+      dirRow.querySelector('.icon').innerHTML = '&#9660;';
+
+      dirRow.addEventListener('click', () => {
+        const isOpen = children.classList.toggle('open');
+        dirRow.querySelector('.icon').innerHTML = isOpen ? '&#9660;' : '&#9654;';
+      });
+
+      container.appendChild(dirRow);
+      container.appendChild(children);
+      renderCfTree(children, item.children, depth + 1);
+    } else {
+      const row = document.createElement('div');
+      row.className = 'sidebar-list-item cf-tree-indent';
+      row.style.setProperty('--cf-indent', `${16 + depth * 16}px`);
+      const icon = getFileIcon(item.name);
+      row.innerHTML = `<span class="icon">${icon}</span><span class="name">${esc(item.name)}</span>`;
+      row.addEventListener('click', () => {
+        expandPathTo(item.path);
+        const treeRow = getTreeRow(item.path);
+        openFile(item.path, treeRow);
+      });
+      row.addEventListener('contextmenu', (e) => showContextMenu(e, item.path));
+      container.appendChild(row);
+    }
+  }
+}
+
+function renderAllCustomFilters() {
+  customFiltersBody.innerHTML = '';
+  const filters = loadCustomFilters();
+  if (filters.length === 0) {
+    customFiltersBody.innerHTML = '<div class="sidebar-section-empty">No filters. Press + to add.</div>';
+    return;
+  }
+  filters.forEach((f, i) => {
+    customFiltersBody.appendChild(renderCustomFilterPanel(f, i));
+  });
+}
+
+// --- Add Filter Dialog ---
+const afOverlay = $('#addFilterOverlay');
+const afFolderInput = $('#afFolderInput');
+const afPatternInput = $('#afPatternInput');
+const afFolderBrowse = $('#afFolderBrowse');
+const afPresetBrowse = $('#afPresetBrowse');
+const afFolderDropdown = $('#afFolderDropdown');
+const afPresetDropdown = $('#afPresetDropdown');
+const afOk = $('#addFilterOk');
+const afCancel = $('#addFilterCancel');
+const afClose = $('#addFilterClose');
+
+function buildFolderDropdown() {
+  afFolderDropdown.innerHTML = '';
+  // Root option
+  const rootItem = document.createElement('div');
+  rootItem.className = 'af-dir-row';
+  rootItem.style.setProperty('--af-indent', '8px');
+  rootItem.innerHTML = '<span class="af-dir-toggle"></span><span class="af-dir-icon">&#128193;</span><span class="af-dir-name">/ (root)</span>';
+  rootItem.addEventListener('click', (e) => {
+    if (e.target.classList.contains('af-dir-toggle')) return;
+    afFolderInput.value = '';
+    afFolderDropdown.style.display = 'none';
+  });
+  afFolderDropdown.appendChild(rootItem);
+
+  buildFolderTreeNodes(treeData, afFolderDropdown, 0);
+}
+
+function buildFolderTreeNodes(items, container, depth) {
+  for (const item of items) {
+    if (item.type !== 'dir') continue;
+    const hasSubs = item.children && item.children.some(c => c.type === 'dir');
+
+    const row = document.createElement('div');
+    row.className = 'af-dir-row';
+    row.style.setProperty('--af-indent', `${8 + (depth + 1) * 14}px`);
+    row.innerHTML = `<span class="af-dir-toggle">${hasSubs ? '&#9654;' : ''}</span><span class="af-dir-icon">&#128193;</span><span class="af-dir-name">${esc(item.name)}</span>`;
+
+    container.appendChild(row);
+
+    if (hasSubs) {
+      const childrenEl = document.createElement('div');
+      childrenEl.className = 'af-dir-children';
+      container.appendChild(childrenEl);
+
+      const toggleEl = row.querySelector('.af-dir-toggle');
+      toggleEl.style.cursor = 'pointer';
+      toggleEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = childrenEl.classList.toggle('open');
+        toggleEl.innerHTML = isOpen ? '&#9660;' : '&#9654;';
+      });
+
+      buildFolderTreeNodes(item.children, childrenEl, depth + 1);
+    }
+
+    // Click row (not toggle) → select folder
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('af-dir-toggle')) return;
+      afFolderInput.value = item.path;
+      afFolderDropdown.style.display = 'none';
+    });
+  }
+}
+
+function buildPresetDropdown() {
+  afPresetDropdown.innerHTML = '';
+  // All (no filter)
+  const allItem = document.createElement('div');
+  allItem.className = 'af-dropdown-item';
+  allItem.innerHTML = '<span>All</span>';
+  allItem.addEventListener('click', () => {
+    afPatternInput.value = '';
+    afPresetDropdown.style.display = 'none';
+  });
+  afPresetDropdown.appendChild(allItem);
+
+  const presets = loadPresets();
+  for (const preset of presets) {
+    const item = document.createElement('div');
+    item.className = 'af-dropdown-item';
+    item.innerHTML = `<span>${esc(preset.label)}</span><span class="af-preset-exts">${esc(preset.exts)}</span>`;
+    item.addEventListener('click', () => {
+      // Convert ".md .txt" format to "*.md, *.txt"
+      const pattern = preset.exts.split(/\s+/).map(e => e.startsWith('.') ? '*' + e : e).join(', ');
+      afPatternInput.value = pattern;
+      afPresetDropdown.style.display = 'none';
+    });
+    afPresetDropdown.appendChild(item);
+  }
+}
+
+function showAddFilterDialog() {
+  return new Promise(resolve => {
+    afFolderInput.value = '';
+    afPatternInput.value = '';
+    afFolderDropdown.style.display = 'none';
+    afPresetDropdown.style.display = 'none';
+    afOverlay.style.display = 'flex';
+    afFolderInput.focus();
+
+    const cleanup = () => {
+      afOverlay.style.display = 'none';
+      afFolderDropdown.style.display = 'none';
+      afPresetDropdown.style.display = 'none';
+      afOk.onclick = null;
+      afCancel.onclick = null;
+      afClose.onclick = null;
+      afOverlay.onclick = null;
+    };
+
+    afOk.onclick = () => {
+      const folder = afFolderInput.value.trim().replace(/\/$/, '');
+      const pattern = afPatternInput.value.trim();
+      cleanup();
+      resolve({ folder, pattern });
+    };
+
+    const cancel = () => { cleanup(); resolve(null); };
+    afCancel.onclick = cancel;
+    afClose.onclick = cancel;
+    afOverlay.onclick = (e) => { if (e.target === afOverlay) cancel(); };
+  });
+}
+
+afFolderBrowse.addEventListener('click', (e) => {
+  e.stopPropagation();
+  afPresetDropdown.style.display = 'none';
+  const isOpen = afFolderDropdown.style.display !== 'none';
+  if (isOpen) {
+    afFolderDropdown.style.display = 'none';
+  } else {
+    buildFolderDropdown();
+    afFolderDropdown.style.display = 'block';
+  }
+});
+
+afPresetBrowse.addEventListener('click', (e) => {
+  e.stopPropagation();
+  afFolderDropdown.style.display = 'none';
+  const isOpen = afPresetDropdown.style.display !== 'none';
+  if (isOpen) {
+    afPresetDropdown.style.display = 'none';
+  } else {
+    buildPresetDropdown();
+    afPresetDropdown.style.display = 'block';
+  }
+});
+
+// Close dropdowns when clicking outside
+afOverlay.addEventListener('click', (e) => {
+  if (!afFolderDropdown.contains(e.target) && e.target !== afFolderBrowse) {
+    afFolderDropdown.style.display = 'none';
+  }
+  if (!afPresetDropdown.contains(e.target) && e.target !== afPresetBrowse) {
+    afPresetDropdown.style.display = 'none';
+  }
+});
+
+customFilterAdd.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const result = await showAddFilterDialog();
+  if (!result) return;
+
+  const filters = loadCustomFilters();
+  filters.push({ folder: result.folder, pattern: result.pattern, viewMode: 'tree' });
+  saveCustomFilters(filters);
+  renderAllCustomFilters();
+});
+
+/* ============================================================
    BOOT
    ============================================================ */
-// Section header toggle (common behavior)
-function initSectionToggle(headerEl, toggleEl, bodyEl) {
+// Section header toggle (common behavior) with localStorage persistence
+function getSectionCollapsed() {
+  try { return JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveSectionCollapsed(sectionId, collapsed) {
+  const state = getSectionCollapsed();
+  state[sectionId] = collapsed;
+  localStorage.setItem(SECTIONS_KEY, JSON.stringify(state));
+}
+
+function initSectionToggle(headerEl, toggleEl, bodyEl, sectionId) {
+  // Restore persisted state
+  const state = getSectionCollapsed();
+  if (state[sectionId]) {
+    toggleEl.classList.add('collapsed');
+    bodyEl.classList.add('collapsed');
+  }
   headerEl.addEventListener('click', (e) => {
     if (e.target.closest('.section-btn')) return;
     toggleEl.classList.toggle('collapsed');
     bodyEl.classList.toggle('collapsed');
+    saveSectionCollapsed(sectionId, toggleEl.classList.contains('collapsed'));
   });
 }
-initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl);
-initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList);
-initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl);
+initSectionToggle($('#recentHeader'), $('#recentToggle'), recentListEl, 'recent');
+initSectionToggle($('#favoritesHeader'), $('#favoritesToggle'), favoritesList, 'favorites');
+initSectionToggle($('#treeHeader'), $('#treeToggle'), treeEl, 'tree');
+initSectionToggle($('#customFiltersHeader'), $('#customFiltersToggle'), customFiltersBody, 'customFilters');
 
 recentClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearRecent(); });
 favoritesClearBtn.addEventListener('click', (e) => { e.stopPropagation(); clearFavorites(); });
@@ -2868,6 +3351,7 @@ btnExpandAll.addEventListener('click', (e) => { e.stopPropagation(); expandAllFi
 btnCollapseAll.addEventListener('click', (e) => { e.stopPropagation(); collapseAll(); });
 await loadTree();
 renderFavorites();
+renderAllCustomFilters();
 
 // Set initial history state
 const urlFileParam = new URLSearchParams(window.location.search).get('file');

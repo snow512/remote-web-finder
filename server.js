@@ -44,7 +44,9 @@ function createApp(docsDir, ignorePatterns) {
       const rel = path.join(relBase, entry.name);
       const ignored = isIgnored(entry.name);
       if (entry.isDirectory()) {
-        return { name: entry.name, path: rel, type: 'dir', ignored, children: buildTree(path.join(dirPath, entry.name), rel, showIgnored) };
+        let children = [];
+        try { children = buildTree(path.join(dirPath, entry.name), rel, showIgnored); } catch { /* skip inaccessible dirs */ }
+        return { name: entry.name, path: rel, type: 'dir', ignored, children };
       }
       return { name: entry.name, path: rel, type: 'file', ignored };
     });
@@ -67,6 +69,7 @@ function createApp(docsDir, ignorePatterns) {
       const showIgnored = req.query.showIgnored === 'true';
       res.json(buildTree(resolvedDir, '', showIgnored));
     } catch (err) {
+      console.error('GET /api/tree error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -74,18 +77,25 @@ function createApp(docsDir, ignorePatterns) {
   app.head('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).end();
-    if (!fs.existsSync(filePath)) return res.status(404).end();
-    const stat = fs.statSync(filePath);
-    res.set('Content-Length', stat.size).type('text/plain').end();
+    try {
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) return res.status(404).end();
+      res.set('Content-Length', stat.size).type('text/plain').end();
+    } catch {
+      res.status(404).end();
+    }
   });
 
   app.get('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
     try {
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) return res.status(400).json({ error: 'Not a file' });
       res.type('text/plain').send(fs.readFileSync(filePath, 'utf-8'));
     } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: 'Not found' });
+      console.error('GET /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -93,21 +103,27 @@ function createApp(docsDir, ignorePatterns) {
   app.get('/api/raw', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
     try {
-      res.sendFile(filePath);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+      if (!fs.statSync(filePath).isFile()) return res.status(400).json({ error: 'Not a file' });
+    } catch { return res.status(404).json({ error: 'Not found' }); }
+    res.sendFile(filePath, (err) => {
+      if (err && !res.headersSent) {
+        console.error('GET /api/raw error:', err);
+        res.status(500).json({ error: err.message });
+      }
+    });
   });
 
   app.put('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     try {
-      fs.writeFileSync(filePath, req.body, 'utf-8');
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(filePath, req.body ?? '', 'utf-8');
       res.json({ ok: true });
     } catch (err) {
+      console.error('PUT /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -115,13 +131,14 @@ function createApp(docsDir, ignorePatterns) {
   app.post('/api/file', (req, res) => {
     const filePath = safePath(req.query.path || '');
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
-    if (fs.existsSync(filePath)) return res.status(409).json({ error: 'File already exists' });
     try {
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, req.body || '', 'utf-8');
+      fs.writeFileSync(filePath, req.body ?? '', { encoding: 'utf-8', flag: 'wx' });
       res.json({ ok: true });
     } catch (err) {
+      if (err.code === 'EEXIST') return res.status(409).json({ error: 'File already exists' });
+      console.error('POST /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -131,9 +148,11 @@ function createApp(docsDir, ignorePatterns) {
     if (!filePath) return res.status(400).json({ error: 'Invalid path' });
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
     try {
+      if (fs.statSync(filePath).isDirectory()) return res.status(400).json({ error: 'Use DELETE /api/folder for directories' });
       fs.unlinkSync(filePath);
       res.json({ ok: true });
     } catch (err) {
+      console.error('DELETE /api/file error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -147,6 +166,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.mkdirSync(folderPath, { recursive: true });
       res.json({ ok: true });
     } catch (err) {
+      console.error('POST /api/folder error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -164,6 +184,7 @@ function createApp(docsDir, ignorePatterns) {
       fs.renameSync(oldPath, newPath);
       res.json({ ok: true });
     } catch (err) {
+      console.error('PATCH /api/rename error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -177,9 +198,10 @@ function createApp(docsDir, ignorePatterns) {
       if (!stat.isDirectory()) return res.status(400).json({ error: 'Not a directory' });
       const entries = fs.readdirSync(folderPath);
       if (entries.length > 0) return res.status(400).json({ error: 'Folder is not empty' });
-      fs.rmdirSync(folderPath);
+      fs.rmSync(folderPath, { recursive: true });
       res.json({ ok: true });
     } catch (err) {
+      console.error('DELETE /api/folder error:', err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -212,6 +234,7 @@ if (require.main === module) {
 ${pkg.name} v${pkg.version} — ${pkg.description}
 
 Usage:
+  rwf [options]
   remote-web-finder [options]
   npx remote-web-finder [options]
 
@@ -219,13 +242,15 @@ Options:
   -d, --dir <path>    Directory to serve (default: . | env: DIR)
   -p, --port <number> Port number (default: 5999 | env: PORT)
   -b, --bg            Run in background (daemon mode | env: BG=true)
+  --stop              Stop the background server
   -h, --help          Show this help
   -v, --version       Show version
 
 Environment variables (.env):
-  PORT   Port number (default: 5999)
-  DIR    Directory to serve (default: .)
-  BG     Run in background when "true"
+  RWF_PORT  Port number (takes precedence over PORT)
+  PORT      Port number (default: 5999)
+  DIR       Directory to serve (default: .)
+  BG        Run in background when "true"
 
 Ignore files:
   Place a .rwfignore file in the served directory to customize
@@ -241,6 +266,32 @@ Ignore files:
     process.exit(0);
   }
 
+  // PID file path (stored next to server.js)
+  const PID_FILE = path.join(__dirname, '.rwf.pid');
+
+  // --stop: kill background server using PID file
+  if (hasFlag('--stop')) {
+    if (!fs.existsSync(PID_FILE)) {
+      console.log('No running server found (PID file missing)');
+      process.exit(0);
+    }
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim(), 10);
+    try {
+      process.kill(pid, 0); // check if alive
+      process.kill(pid, 'SIGTERM');
+      fs.unlinkSync(PID_FILE);
+      console.log(`Server stopped (PID: ${pid})`);
+    } catch (err) {
+      fs.unlinkSync(PID_FILE);
+      if (err.code === 'ESRCH') {
+        console.log(`Server was not running (stale PID: ${pid}), cleaned up`);
+      } else {
+        console.error(`Failed to stop server (PID: ${pid}):`, err.message);
+      }
+    }
+    process.exit(0);
+  }
+
   // Load .env file if present
   const envPath = require('path').join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -250,7 +301,7 @@ Ignore files:
     });
   }
 
-  const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10);
+  const PORT = parseInt(getArg(['-p', '--port'], process.env.RWF_PORT || process.env.PORT || '5999'), 10) || 5999;
   const DIR_ARG = getArg(['-d', '--dir'], process.env.DIR || '.');
   const isBg = hasFlag(['-b', '--bg']) || process.env.BG === 'true';
 
@@ -267,7 +318,7 @@ Ignore files:
     const dir = path.resolve(DIR_ARG);
     console.log(`Remote Web Finder started in background (PID: ${child.pid})`);
     console.log(`  http://localhost:${PORT}  →  ${dir}`);
-    console.log(`  Stop: kill ${child.pid}`);
+    console.log(`  Stop: node server.js --stop`);
     process.exit(0);
   }
 
@@ -301,6 +352,11 @@ Ignore files:
     return [];
   }
 
+  // Write PID file immediately for background mode (before listen)
+  if (process.env.__RWF_BG) {
+    fs.writeFileSync(PID_FILE, String(process.pid));
+  }
+
   const ignorePatterns = loadIgnorePatterns();
   const app = createApp(DOCS_DIR, ignorePatterns);
 
@@ -308,4 +364,11 @@ Ignore files:
     console.log(`Remote Web Finder running at http://localhost:${PORT}`);
     console.log(`Serving docs from: ${DOCS_DIR}`);
   });
+
+  // Clean up PID file on exit
+  function cleanup() {
+    try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
+  }
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
 }
