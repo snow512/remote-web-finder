@@ -42,9 +42,7 @@ const MAX_RECENT = 5;
 const BASE_TITLE = 'Remote Web Finder';
 
 /* === Path Utilities === */
-function getFileName(p) { return p ? p.split('/').pop() : ''; }
-function getDirPath(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : ''; }
-function getDirName(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : ''; }
+// getFileName, getDirPath, getDirName — defined in utils.js
 
 /* === DOM Helpers === */
 function getTreeRow(filePath) {
@@ -247,7 +245,7 @@ marked.use({
     image({ href, title, text }) {
       if (!href) return '';
       // Block dangerous protocols
-      if (/^\s*(javascript|vbscript|data(?!:image\/))/i.test(href)) {
+      if (isDangerousHref(href)) {
         return `<img src="" alt="${(text || '').replace(/"/g, '&quot;')}" loading="lazy">`;
       }
       const safeHref = href.replace(/"/g, '&quot;');
@@ -257,12 +255,7 @@ marked.use({
     },
     // Sanitize: strip dangerous HTML tags and attributes
     html({ text }) {
-      return text
-        .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
-        .replace(/<(iframe|object|embed|form|style)[\s>][\s\S]*?<\/\1>/gi, '')
-        .replace(/<(iframe|object|embed|form|style)\b[^>]*\/?\s*>/gi, '')
-        .replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
-        .replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="');
+      return sanitizeHtml(text);
     }
   }
 });
@@ -845,25 +838,7 @@ function getFileIcon(name) {
   return '&#128220;';
 }
 
-function countFiles(items) {
-  let count = 0;
-  items.forEach(item => {
-    if (item.type === 'file') count++;
-    else if (item.type === 'dir' && item.children) count += countFiles(item.children);
-  });
-  return count;
-}
-
-function countDirs(items) {
-  let count = 0;
-  items.forEach(item => {
-    if (item.type === 'dir') {
-      count++;
-      if (item.children) count += countDirs(item.children);
-    }
-  });
-  return count;
-}
+// countFiles, countDirs — defined in utils.js
 
 /* ============================================================
    5. SEARCH / FILTER (sidebar)
@@ -2972,17 +2947,7 @@ function saveCustomFilters(filters) {
   localStorage.setItem(CUSTOM_FILTERS_KEY, JSON.stringify(filters));
 }
 
-function collectFiles(items) {
-  const result = [];
-  for (const item of items) {
-    if (item.type === 'file') {
-      result.push(item);
-    } else if (item.type === 'dir' && item.children) {
-      result.push(...collectFiles(item.children));
-    }
-  }
-  return result;
-}
+// collectFiles — defined in utils.js
 
 function findSubtree(items, folderPath) {
   if (!folderPath) return items;

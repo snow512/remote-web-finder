@@ -234,6 +234,7 @@ if (require.main === module) {
 ${pkg.name} v${pkg.version} — ${pkg.description}
 
 Usage:
+  rwf [options]
   remote-web-finder [options]
   npx remote-web-finder [options]
 
@@ -241,13 +242,15 @@ Options:
   -d, --dir <path>    Directory to serve (default: . | env: DIR)
   -p, --port <number> Port number (default: 5999 | env: PORT)
   -b, --bg            Run in background (daemon mode | env: BG=true)
+  --stop              Stop the background server
   -h, --help          Show this help
   -v, --version       Show version
 
 Environment variables (.env):
-  PORT   Port number (default: 5999)
-  DIR    Directory to serve (default: .)
-  BG     Run in background when "true"
+  RWF_PORT  Port number (takes precedence over PORT)
+  PORT      Port number (default: 5999)
+  DIR       Directory to serve (default: .)
+  BG        Run in background when "true"
 
 Ignore files:
   Place a .rwfignore file in the served directory to customize
@@ -263,6 +266,32 @@ Ignore files:
     process.exit(0);
   }
 
+  // PID file path (stored next to server.js)
+  const PID_FILE = path.join(__dirname, '.rwf.pid');
+
+  // --stop: kill background server using PID file
+  if (hasFlag('--stop')) {
+    if (!fs.existsSync(PID_FILE)) {
+      console.log('No running server found (PID file missing)');
+      process.exit(0);
+    }
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim(), 10);
+    try {
+      process.kill(pid, 0); // check if alive
+      process.kill(pid, 'SIGTERM');
+      fs.unlinkSync(PID_FILE);
+      console.log(`Server stopped (PID: ${pid})`);
+    } catch (err) {
+      fs.unlinkSync(PID_FILE);
+      if (err.code === 'ESRCH') {
+        console.log(`Server was not running (stale PID: ${pid}), cleaned up`);
+      } else {
+        console.error(`Failed to stop server (PID: ${pid}):`, err.message);
+      }
+    }
+    process.exit(0);
+  }
+
   // Load .env file if present
   const envPath = require('path').join(__dirname, '.env');
   if (fs.existsSync(envPath)) {
@@ -272,7 +301,7 @@ Ignore files:
     });
   }
 
-  const PORT = parseInt(getArg(['-p', '--port'], process.env.PORT || '5999'), 10) || 5999;
+  const PORT = parseInt(getArg(['-p', '--port'], process.env.RWF_PORT || process.env.PORT || '5999'), 10) || 5999;
   const DIR_ARG = getArg(['-d', '--dir'], process.env.DIR || '.');
   const isBg = hasFlag(['-b', '--bg']) || process.env.BG === 'true';
 
@@ -289,7 +318,7 @@ Ignore files:
     const dir = path.resolve(DIR_ARG);
     console.log(`Remote Web Finder started in background (PID: ${child.pid})`);
     console.log(`  http://localhost:${PORT}  →  ${dir}`);
-    console.log(`  Stop: kill ${child.pid}`);
+    console.log(`  Stop: node server.js --stop`);
     process.exit(0);
   }
 
@@ -329,5 +358,16 @@ Ignore files:
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Remote Web Finder running at http://localhost:${PORT}`);
     console.log(`Serving docs from: ${DOCS_DIR}`);
+    // Write PID file for background mode
+    if (process.env.__RWF_BG) {
+      fs.writeFileSync(PID_FILE, String(process.pid));
+    }
   });
+
+  // Clean up PID file on exit
+  function cleanup() {
+    try { if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE); } catch {}
+  }
+  process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+  process.on('SIGINT', () => { cleanup(); process.exit(0); });
 }
