@@ -63,6 +63,12 @@ function createApp(docsDir, ignorePatterns) {
   app.use(express.text({ type: '*/*', limit: '5mb' }));
   app.use(express.static(path.join(__dirname, 'public')));
 
+  // --- Version API ---
+  const pkg = require('./package.json');
+  app.get('/api/version', (_req, res) => {
+    res.json({ version: pkg.version, name: pkg.name });
+  });
+
   // --- API ---
   app.get('/api/tree', (req, res) => {
     try {

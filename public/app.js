@@ -11,6 +11,7 @@ try {
 }
 
 /* === State === */
+let appVersion = '';
 let currentPath = null;
 let isEditing = false;
 let isDirty = false;
@@ -1411,6 +1412,7 @@ function showWelcomeScreen() {
     ${favsHtml}
     ${recentHtml}
     <div class="dash-hint">Select a file from the sidebar to view</div>
+    <div class="dash-version">${appVersion}</div>
   </div>`;
 
   // Click handler for dashboard items (recent + favorites)
@@ -3395,3 +3397,14 @@ window.addEventListener('popstate', async (e) => {
 if (!currentPath && window.innerWidth <= 768) {
   openSidebar();
 }
+
+// Fetch and display version
+fetch('/api/version').then(r => r.json()).then(({ version }) => {
+  appVersion = `v${version}`;
+  const sidebarV = document.getElementById('sidebarVersion');
+  const settingsV = document.getElementById('settingsVersion');
+  const dashV = document.getElementById('dashVersion');
+  if (sidebarV) sidebarV.textContent = appVersion;
+  if (settingsV) settingsV.textContent = `Remote Web Finder ${appVersion}`;
+  if (dashV) dashV.textContent = appVersion;
+}).catch(err => { console.warn('Failed to fetch version:', err); });
