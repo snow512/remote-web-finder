@@ -1,4 +1,4 @@
-const { getFileName, getDirPath, getDirName, countFiles, countDirs, collectFiles, sanitizeHtml, isDangerousHref } = require('./public/utils');
+const { getFileName, getDirPath, getDirName, countFiles, countDirs, collectFiles, sanitizeHtml, isDangerousHref } = require('./dist/shared/utils');
 
 // === getFileName ===
 describe('getFileName', () => {

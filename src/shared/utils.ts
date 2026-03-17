@@ -1,10 +1,18 @@
-/* === Shared utility functions (browser + Node testable) === */
+import { TreeItem } from './types';
 
-function getFileName(p) { return p ? p.split('/').pop() : ''; }
-function getDirPath(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : ''; }
-function getDirName(p) { return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : ''; }
+export function getFileName(p: string): string {
+  return p ? p.split('/').pop() || '' : '';
+}
 
-function countFiles(items) {
+export function getDirPath(p: string): string {
+  return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/') + 1) : '';
+}
+
+export function getDirName(p: string): string {
+  return p && p.includes('/') ? p.substring(0, p.lastIndexOf('/')) : '';
+}
+
+export function countFiles(items: TreeItem[]): number {
   let count = 0;
   items.forEach(item => {
     if (item.type === 'file') count++;
@@ -13,7 +21,7 @@ function countFiles(items) {
   return count;
 }
 
-function countDirs(items) {
+export function countDirs(items: TreeItem[]): number {
   let count = 0;
   items.forEach(item => {
     if (item.type === 'dir') {
@@ -24,8 +32,8 @@ function countDirs(items) {
   return count;
 }
 
-function collectFiles(items) {
-  const result = [];
+export function collectFiles(items: TreeItem[]): TreeItem[] {
+  const result: TreeItem[] = [];
   for (const item of items) {
     if (item.type === 'file') {
       result.push(item);
@@ -36,11 +44,7 @@ function collectFiles(items) {
   return result;
 }
 
-/**
- * Sanitize raw HTML from markdown rendering.
- * Strips dangerous tags (<script>, <iframe>, etc.), event handler attributes, and javascript: hrefs.
- */
-function sanitizeHtml(text) {
+export function sanitizeHtml(text: string): string {
   if (!text) return '';
   return text
     .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
@@ -50,14 +54,6 @@ function sanitizeHtml(text) {
     .replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="');
 }
 
-/**
- * Check if href uses a dangerous protocol.
- */
-function isDangerousHref(href) {
+export function isDangerousHref(href: string): boolean {
   return /^\s*(javascript|vbscript|data(?!:image\/))/i.test(href);
-}
-
-// Export for Node.js (tests), no-op in browser
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { getFileName, getDirPath, getDirName, countFiles, countDirs, collectFiles, sanitizeHtml, isDangerousHref };
 }

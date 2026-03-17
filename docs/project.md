@@ -18,10 +18,12 @@ See individual documents in `docs/specs/` for detailed specifications.
 
 | Area | Choice | Notes |
 |------|--------|-------|
+| Language | TypeScript (strict) | Server + Client |
 | Runtime | Node.js (>=16) | |
-| Server | Express 4 | |
+| Server | Express 4 | `src/server/` → tsc → `dist/server/` |
+| Client | Vanilla TS + Vite | `src/client/` → Vite → `dist/public/` |
 | Test | Jest + Supertest | |
-| Client | Vanilla HTML/CSS/JS | `public/` directory |
+| Shared | TypeScript modules | `src/shared/` (types, utils) |
 
 ---
 
@@ -39,8 +41,13 @@ rwf
 
 ### Development
 ```bash
-npm start                 # Start server (port 5999)
-npm test                  # Run tests
+npm run build             # Build server (tsc) + client (Vite)
+npm run build:server      # Build server only
+npm run build:client      # Build client only
+npm run dev               # Run built server
+npm start                 # Build + run
+npm test                  # Run tests (196 tests)
+npm run typecheck         # Type-check server + client
 ```
 
 ### CLI Options
@@ -77,21 +84,43 @@ BG=true
 
 ```
 remote-web-finder/
-├── server.js             → Express server main file (CLI entrypoint)
-├── server.test.js        → Test file
-├── package.json          → bin: rwf, remote-web-finder
-├── .rwfignore            → File exclusion rules
-├── .env                  → Environment variables (optional)
-├── public/               → Static files (client)
-│   ├── index.html        → Main HTML
-│   ├── app.js            → Client application logic
-│   └── style.css         → Styles
-└── docs/                 → Documentation
-    ├── project.md        → This file (project summary)
-    ├── specs/            → Design documents
-    ├── tasks/            → Task management
-    ├── issues/           → Issue tracking
-    └── decisions/        → Architecture decisions (ADR)
+├── src/                     → TypeScript source
+│   ├── server/              → Express server
+│   │   ├── index.ts         → CLI entrypoint
+│   │   ├── app.ts           → Express app factory
+│   │   ├── routes/          → API route handlers (tree, file, folder, rename, version)
+│   │   └── utils/           → Server utilities (pattern, ignore, safePath)
+│   ├── client/              → Client application (Vite)
+│   │   ├── main.ts          → Client entrypoint + boot
+│   │   ├── index.html       → HTML template
+│   │   ├── style.css        → Styles
+│   │   ├── state.ts         → Global state
+│   │   ├── api.ts           → API client
+│   │   ├── constants.ts     → Constants + localStorage keys
+│   │   ├── components/      → UI components
+│   │   │   ├── tree/        → File tree (render, navigation, filter, helpers)
+│   │   │   ├── editor/      → Editor (editor, toolbar, draft, line-numbers)
+│   │   │   ├── sidebar/     → Sidebar (recent, favorites, sections, resize, custom-filters)
+│   │   │   ├── preview.ts   → Markdown preview + TOC
+│   │   │   ├── dialog.ts    → Dialogs (confirm, prompt, error)
+│   │   │   ├── search.ts    → In-content search
+│   │   │   ├── context-menu.ts → Right-click menus + file ops
+│   │   │   ├── settings.ts  → Settings dialog
+│   │   │   └── ...          → toast, theme, icons, breadcrumb, zoom, focus-mode, status-bar
+│   │   └── utils/           → Client utilities (dom)
+│   └── shared/              → Shared between server + client
+│       ├── types.ts         → TreeItem type
+│       └── utils.ts         → Shared utility functions
+├── dist/                    → Compiled output (gitignored)
+├── server.js                → Legacy wrapper (delegates to dist/)
+├── server.test.js           → Server API tests
+├── utils.test.js            → Utility function tests
+├── tsconfig.json            → Server TypeScript config
+├── tsconfig.client.json     → Client TypeScript config
+├── vite.config.ts           → Vite build config
+├── package.json             → bin: rwf, remote-web-finder
+├── .rwfignore               → File exclusion rules
+└── docs/                    → Documentation
 ```
 
 ---
